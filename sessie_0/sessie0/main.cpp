@@ -24,9 +24,14 @@ int main(int argc, const char** argv)
         return -1;
     }
 
+// http://answers.opencv.org/question/90232/commandlineparser-only-gets-true/
     // Check if the user has supplied supported parameters
     if(parser.has("images")) {
-      String image = parser.get<String>(0);
+      string image(parser.get<string>("images"));
+      if(image.empty()) {
+        parser.printMessage();
+        return -1;
+      }
       cout << image << endl;
       //Mat image;
       //image = imread( imageName, IMREAD_COLOR );
