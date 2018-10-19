@@ -1,5 +1,0 @@
-# depslib dependency file v1.0
-1539934448 source:/home/student/Documents/DylanVanAssche/2018_beeldinterpretatie_VanAssche_Dylan/sessie_0/sessie0/main.cpp
-	<iostream>
-	<opencv2/opencv.hpp>
-
