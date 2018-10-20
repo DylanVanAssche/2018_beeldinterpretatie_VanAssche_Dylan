@@ -5,5 +5,7 @@ compiler:
 
 script:
         - ls
+        # Build sessie_0
+        - cd sessie_0
         - cmake CMakeLists.txt
         - make
