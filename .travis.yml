@@ -1,0 +1,9 @@
+language: cpp
+
+compiler:
+        - gcc
+
+script:
+        - ls
+        - cmake CMakeLists.txt
+        - make
