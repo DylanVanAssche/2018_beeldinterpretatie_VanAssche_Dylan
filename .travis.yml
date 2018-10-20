@@ -4,6 +4,7 @@ compiler:
         - gcc
 
 before_install:
+        - sudo add-apt-repository ppa:timsc/opencv-3.4
         - sudo apt-get update
 
 install:
