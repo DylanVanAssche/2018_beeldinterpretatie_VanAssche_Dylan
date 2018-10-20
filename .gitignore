@@ -31,3 +31,7 @@
 *.out
 *.app
 
+# CLion
+.idea
+cmake-build-*
+sessie0
