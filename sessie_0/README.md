@@ -15,5 +15,7 @@ Let hierbij op
 
 # Usage 
 
+In this directory:
 - `cmake CmakeLists.txt`
+- `make`
 - `./sessie_0 --grey=test.png --color=testColor.png`
