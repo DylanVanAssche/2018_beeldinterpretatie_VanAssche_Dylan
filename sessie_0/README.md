@@ -1,5 +1,6 @@
 # Sessie 0 - OpenCV basics
 
+# Assignment
 Maak een codeblocks project aan waarin je
 * Een command line parser maakt die meerdere afbeeldingen kan inlezen.
 * De afbeeldingen `test.png` en `testColor.png` inleest en visualiseert.
@@ -12,5 +13,7 @@ Let hierbij op
 * De gemaakte afspraken
 * Het toevoegen van zoveel mogelijk controles om fouten actief op te sporen
 
+# Usage 
 
-
+- `cmake CmakeLists.txt`
+- `./sessie_0 --grey=test.png --color=testColor.png`
