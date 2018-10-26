@@ -30,7 +30,7 @@ int main(int argc, const char** argv) {
     string color(parser.get<string>("color"));
     if(bimodal.empty() || color.empty())
     {
-        cerr << "Please supply your images using command line arguments: --bimodal=imageBimodal.jpg and --color=imageColor.jpg" << endl;
+        cerr << "Please supply your images using command line arguments: --bimodal=imageBimodal.jpg and --color=imageColor.jpg or --color=imageColorAdapted.jpg" << endl;
         return -1;
     }
 
