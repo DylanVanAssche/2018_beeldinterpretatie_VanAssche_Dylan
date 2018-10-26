@@ -85,7 +85,7 @@ int main(int argc, const char** argv) {
     Mat maskerMatrixOperation(colorImg.size(), CV_8UC1);
     Mat segmentationMatrixOperation(colorImg.size(), CV_8UC3);
     split(colorImg, splitted);
-    Mat blue = splitted[0];
+    Mat blue = splitted[0]; // merge() replaces this boiler plate code
     Mat green = splitted[1];
     Mat red = splitted[2];
     maskerMatrixOperation = (red > 95) & (green > 40) & (blue > 20) & ((max(red, max(green, blue)) - min(red, min(green, blue))) > 15) & (abs(red - green) > 15) & (red > green) & (red > blue);
@@ -97,6 +97,40 @@ int main(int argc, const char** argv) {
     namedWindow("Segmentation matrix operations", WINDOW_AUTOSIZE);
     imshow("Segmentation matrix operations", segmentationMatrixOperation);
     waitKey(0); // Wait until the user presses a key
+
+    // Bimodal OTSU
+    namedWindow("OTSU original", WINDOW_AUTOSIZE);
+    imshow("OTSU original", bimodalImg);
+
+    Mat threshedImg;
+    threshold(bimodalImg, threshedImg, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+    namedWindow("OTSU thresholding", WINDOW_AUTOSIZE);
+    imshow("OTSU thresholding", threshedImg);
+    waitKey(0); // Wait until the user presses a key
+    // A part of the ticket is completely black (left, bottom), OTSU depends on a bimodal image -> no uniform background color
+    // We can use histogram equalisation and CLAHE to optimize the image before applying OTSU
+    // 1. histogram equalisation: isn't that great either
+    Mat bimodalImgEqualized;
+    Mat threshedImgEqualized;
+    equalizeHist(bimodalImg, bimodalImgEqualized); // previously: .clone() to avoid losing original matrix (obselete by now)
+    threshold(bimodalImgEqualized, threshedImgEqualized, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+    namedWindow("Equalized OTSU", WINDOW_AUTOSIZE);
+    imshow("Equalized OTSU", threshedImgEqualized);
+    waitKey(0);
+
+    // 2. CLAHE: advanced locally equalisation using a window, a bit better than normal equalisation since the
+    // thresholding is applied locally, non equal backgrounds are difficult for OTSU, CLAHE makes the background more
+    // equally then histogram thresholding
+    Mat bimodalImgCLAHE;
+    Mat threshedImgCLAHE;
+    Ptr<CLAHE> clahe_p = createCLAHE();
+    clahe_p->setTilesGridSize(Size(15, 15)); // window size
+    clahe_p->setClipLimit(1); // 1 - 10 contrast
+    clahe_p->apply(bimodalImg.clone(), bimodalImgCLAHE); // still old C function, use .clone() to be sure
+    threshold(bimodalImgCLAHE, threshedImgCLAHE, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+    namedWindow("OTSU CLAHE", WINDOW_AUTOSIZE);
+    imshow("OTSU CLAHE", threshedImgCLAHE);
+    waitKey(0);
 
     return 0;
 }
