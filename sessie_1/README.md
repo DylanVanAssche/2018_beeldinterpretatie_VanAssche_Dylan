@@ -21,3 +21,12 @@
 * Probeer in resulterende blobs regios weg te werken
 
 Bekijk zeker `findContours()`, `convexHull` en `drawContours`!
+
+# Usage 
+
+Enter one of the tasks folders using `cd opdracht_1` or `cd opdracht_2`.
+In this directory:
+- `cmake CmakeLists.txt`
+- `make`
+- `./sessie_1-opdracht_1 --bimodal=imageBimodal.jpg --color=imageColor.jpg` or `./sessie_1-opdracht_2 --color=imageColorAdapted.jpg`
+
