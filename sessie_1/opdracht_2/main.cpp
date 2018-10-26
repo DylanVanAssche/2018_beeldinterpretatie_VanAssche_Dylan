@@ -4,7 +4,6 @@
 using namespace std;
 using namespace cv;
 
-// imageColorAdapted.jpg has problems due random pixels with the same color as the skin + the chair is detected too.
 int main(int argc, const char** argv) {
     CommandLineParser parser(argc, argv,
                              "{ help h usage ? | | Shows this message.}"
@@ -29,18 +28,53 @@ int main(int argc, const char** argv) {
     string color(parser.get<string>("color"));
     if(color.empty())
     {
-        cerr << "Please supply your images using command line arguments: --bimodal=imageBimodal.jpg" << endl;
+        cerr << "Please supply your images using command line arguments: --color=imageColorAdapted.jpg" << endl;
         return -1;
     }
 
     // Try to load images
-    Mat colorImg;
-    colorImg = imread(color, IMREAD_GRAYSCALE);
+    Mat colorImg; // BGR
+    colorImg = imread(color, IMREAD_COLOR);
 
     if(colorImg.empty()) {
         cerr << "Loading images failed, please verify the paths to the images." << endl;
         return -1;
     }
+
+    // Thresholding skin pixels
+    // Approach 1: looping through all the pixels using a double for lus
+    // Print all pixels of our colorImg image to the command line;
+    Mat maskerLoop(colorImg.size(), CV_8UC1);
+    Mat segmentationLoop(colorImg.size(), CV_8UC3);
+    for(int rowIndex = 0; rowIndex < colorImg.rows; rowIndex++)
+    {
+        for(int columnIndex = 0; columnIndex < colorImg.cols; columnIndex++) {
+            cout << "(" << (int)colorImg.at<Vec3b>(rowIndex, columnIndex)[0] << "," << (int)colorImg.at<Vec3b>(rowIndex, columnIndex)[1] << "," << (int)colorImg.at<Vec3b>(rowIndex, columnIndex)[2] << ")"; // typecasting to show it properly in the terminal
+            cout << " ";
+            int blue = (int)colorImg.at<Vec3b>(rowIndex, columnIndex)[0];
+            int green = (int)colorImg.at<Vec3b>(rowIndex, columnIndex)[1];
+            int red = (int)colorImg.at<Vec3b>(rowIndex, columnIndex)[2];
+            // Filter formula from the assignment
+            if((red > 95) && (green > 40) && (blue > 20) && ((max(red, max(green, blue)) - min(red, min(green, blue))) > 15) && (abs(red - green) > 15) && (red > green) && (red > blue))
+            {
+                maskerLoop.at<uchar>(rowIndex, columnIndex) = 255;
+            }
+            else {
+                maskerLoop.at<uchar>(rowIndex, columnIndex) = 0;
+            }
+        }
+        cout << endl; // new line when row++
+    }
+    cout << endl;
+
+    // Combine masker and image
+    colorImg.copyTo(segmentationLoop, maskerLoop);
+
+    namedWindow("Skin extraction pixel loop", WINDOW_AUTOSIZE);
+    imshow("Skin extraction pixel loop", maskerLoop);
+    namedWindow("Segmentation pixel loop", WINDOW_AUTOSIZE);
+    imshow("Segmentation pixel loop", segmentationLoop);
+    waitKey(0); // Wait until the user presses a key
 
     // Approach 2: using OpenCV matrix operations to retrieve all the pixels (binary image) that are valid for the filter
     Mat splitted[3];
@@ -51,29 +85,6 @@ int main(int argc, const char** argv) {
     Mat green = splitted[1];
     Mat red = splitted[2];
     maskerMatrixOperation = (red > 95) & (green > 40) & (blue > 20) & ((max(red, max(green, blue)) - min(red, min(green, blue))) > 15) & (abs(red - green) > 15) & (red > green) & (red > blue);
-    // Optimize mask with opening, closing; dilation and erosion
-    erode(maskerMatrixOperation, maskerMatrixOperation, Mat(), Point(-1, -1), 2); // noise suppression x2 due huge pixels
-    dilate() // fix erode
-    imshow
-
-    // Connect blobs
-    dilate()
-    erode()
-    imshow
-
-    // Convex hull approach -> contours
-    vector< vector<Point> > contours;
-    findContours(maskerMatrixOperation.clone(), contours, RETR_EXTERNAL, CHAIN_APPROX_NONE); // explain defines
-    vector< vector<Point> > hulls;
-    for(size_t i=0; i > contours.size(); i++) {
-        vector<Point> hull;
-        convexHull(contours[i], hulls);
-        hulls.push_back(hull);
-    }
-    drawContours(maskerMatrixOperation, hulls, -1, 255, -1); // check docs -1
-
-    // Combine channels after
-
     // Combine masker and image
     colorImg.copyTo(segmentationMatrixOperation, maskerMatrixOperation);
 
@@ -83,12 +94,44 @@ int main(int argc, const char** argv) {
     imshow("Segmentation matrix operations", segmentationMatrixOperation);
     waitKey(0); // Wait until the user presses a key
 
+    // Optimize mask with opening, closing; dilation and erosion
+    cerr << "Optimizing mask" << endl;
+    erode(maskerMatrixOperation, maskerMatrixOperation, Mat(), Point(-1, -1), 2); // noise suppression x2 due huge pixels
+    dilate(maskerMatrixOperation, maskerMatrixOperation, Mat(), Point(-1, -1), 2); // fix erode data loss
+    namedWindow("Remove noise", WINDOW_AUTOSIZE);
+    imshow("Remove noise", maskerMatrixOperation);
+    waitKey(0);
+
+    // Connect blobs
+    dilate(maskerMatrixOperation, maskerMatrixOperation, Mat(), Point(-1, -1), 2); // connect blobs
+    erode(maskerMatrixOperation, maskerMatrixOperation, Mat(), Point(-1, -1), 2); // fix dilate data loss
+    namedWindow("Connect blobs", WINDOW_AUTOSIZE);
+    imshow("Connect blobs", maskerMatrixOperation);
+    waitKey(0);
+
+    // Convex hull approach -> contours
+    vector< vector<Point> > contours;
+    findContours(maskerMatrixOperation.clone(), contours, RETR_EXTERNAL, CHAIN_APPROX_NONE); // explain defines
+    vector< vector<Point> > hulls;
+    for(size_t i=0; i < contours.size(); i++) {
+        vector<Point> hull;
+        convexHull(contours[i], hull);
+        hulls.push_back(hull);
+    }
+    drawContours(maskerMatrixOperation, hulls, -1, 255, -1); // check docs -1
+
+    Mat contouredImg(colorImg.size(), CV_8UC3);
+    colorImg.copyTo(contouredImg, maskerMatrixOperation);
+    namedWindow("Draw contours", WINDOW_AUTOSIZE);
+    imshow("Draw contours", contouredImg);
+    waitKey(0);
+/*
     // Bimodal OTSU
     namedWindow("OTSU original", WINDOW_AUTOSIZE);
-    imshow("OTSU original", bimodalImg);
+    imshow("OTSU original", );
 
     Mat threshedImg;
-    threshold(colorImg, threshedImg, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+    threshold(bimodalImg, threshedImg, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
     namedWindow("OTSU thresholding", WINDOW_AUTOSIZE);
     imshow("OTSU thresholding", threshedImg);
     waitKey(0); // Wait until the user presses a key
@@ -115,7 +158,7 @@ int main(int argc, const char** argv) {
     threshold(bimodalImgCLAHE, threshedImgCLAHE, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
     namedWindow("OTSU CLAHE", WINDOW_AUTOSIZE);
     imshow("OTSU CLAHE", threshedImgCLAHE);
-    waitKey(0);
+    waitKey(0);*/
 
     return 0;
 }
