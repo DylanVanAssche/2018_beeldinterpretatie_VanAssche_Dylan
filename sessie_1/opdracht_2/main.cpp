@@ -103,8 +103,8 @@ int main(int argc, const char** argv) {
     waitKey(0);
 
     // Connect blobs
-    dilate(maskerMatrixOperation, maskerMatrixOperation, Mat(), Point(-1, -1), 2); // connect blobs
-    erode(maskerMatrixOperation, maskerMatrixOperation, Mat(), Point(-1, -1), 2); // fix dilate data loss
+    dilate(maskerMatrixOperation, maskerMatrixOperation, Mat(), Point(-1, -1), 5); // connect blobs, more times than removing noise
+    erode(maskerMatrixOperation, maskerMatrixOperation, Mat(), Point(-1, -1), 5); // fix dilate data loss
     namedWindow("Connect blobs", WINDOW_AUTOSIZE);
     imshow("Connect blobs", maskerMatrixOperation);
     waitKey(0);
