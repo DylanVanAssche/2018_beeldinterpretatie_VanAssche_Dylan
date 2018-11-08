@@ -34,3 +34,7 @@ script:
         - cmake CMakeLists.txt
         - make
         - cd ../..
+        # Build sessie_2
+        - cd sessie_2
+        - cmake CMakeLists.txt
+        - make
