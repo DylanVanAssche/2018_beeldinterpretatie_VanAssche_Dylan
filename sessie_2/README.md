@@ -11,3 +11,8 @@ Omdat autonome wagens heel erg in de opmars zijn willen we dat deze wagens zich 
 * Opdracht 3: Gebruik connected component analyse om enkel het stopbord over te houden
 * Opdracht 4: Gebruik een trackbar om de optimale threshold waardes te bepalen
 
+# Usage
+In this directory:
+- `cmake CMakeLists.txt`
+- `make`
+- `./sessie_2 --sign=sign.jpg`
