@@ -158,16 +158,25 @@ int main(int argc, const char** argv) {
         }
     }
     vector < vector<Point> > temp;
+    Rect box = boundingRect(biggest_blob); // Fetch bounding box for biggest contour
     temp.push_back(biggest_blob);
 
     // input image, contours, contourIdx (-1 = draw all contours), color, thickness (< 0, draw contour interiors), lineType, hierarchy, maxLevel, offset
     drawContours(hsvSegmentedImgMerged, temp, -1, 255, -1);
 
-    Mat contouredImg(signImg.size(), CV_8UC3);
+    Mat contouredImg = Mat::zeros(signImg.size(), CV_8UC3);
     signImg.copyTo(contouredImg, hsvSegmentedImgMerged);
+    rectangle(contouredImg, box, cv::Scalar(0, 255, 0)); // Draw bounding box on contoured image with color green
     namedWindow("Draw contours", WINDOW_AUTOSIZE);
     imshow("Draw contours", contouredImg);
     waitKey(0);
+
+    Mat contouredBoxImg = Mat::zeros(box.size(), contouredImg.type()); //zeros(box.size(), contouredImg.type());;
+    Mat ROI(contouredImg, box);
+    ROI.copyTo(contouredBoxImg);
+
+    namedWindow("Draw contours boxed", WINDOW_AUTOSIZE);
+    imshow("Draw contours boxed", contouredBoxImg);
 
     // Add trackbars to select the right threshold in an easy way
     namedWindow("Draw contours with trackbar", WINDOW_AUTOSIZE);
