@@ -6,4 +6,12 @@ Met template matching gaan we op zoek naar een exact object. Wanneer er echter e
 * **Opdracht 2**: Kies 1 van bovenstaande keypoint detectoren, bepaal descriptoren van de gegenereerde keypoints en doe een brute force matching tussen beide sets.
 * **Opdracht 3**: Pas RANSAC toe om enkel de keypoint matches over te houden die op iets slaan. Gebruik de resulterende matches om een homography uit te rekenen en het object in uw doelbeeld te vinden.
 
+# Usage
 
+Enter one of the tasks folders using `cd opdracht_1` or `cd opdracht_2` or `cd opdracht_3`.
+In this directory:
+- `cmake CMakeLists.txt`
+- `make`
+- `./sessie_4-1 --input=fitness_image.jpg --object=fitness_object.jpg` or `./sessie_4-2 --input=fitness_image.jpg --object=fitness_object.jpg` or `./sessie_4-3 --input=fitness_image.jpg --object=fitness_object.jpg`
+
+:bulb: You can also use `--input=kinderbueno_image.jpg --object=kinderbueno_object.jpg` when you run these projects.
