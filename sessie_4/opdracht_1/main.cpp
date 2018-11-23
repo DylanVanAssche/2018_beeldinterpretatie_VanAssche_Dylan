@@ -73,15 +73,19 @@ int main(int argc, const char** argv) {
 
     // Find keypoints using BRISK
     // Variables to store keypoints and descriptors
+    int threshold=60; // trackbar?
+    int octaves=4; //(pyramid layer) from which the keypoint has been extracted
+    float patternScale=1.0f;
     std::vector<KeyPoint> briskKeypointsObject, briskKeypointsInput;
     Mat briskDescriptorsObject, briskDescriptorsInput;
 
-    // Detect ORB features and compute descriptors.
+
+    // Detect BRISK features and compute descriptors.
     Mat briskObjectImg = objectImg.clone();
     Mat briskInputImg = inputImg.clone();
-    Ptr<Feature2D> brisk = BRISK::create(500); // use trackbar for MAX FEATURES
-    orb->detectAndCompute(briskObjectImg, Mat(), briskKeypointsObject, briskDescriptorsObject);
-    orb->detectAndCompute(briskInputImg, Mat(), briskKeypointsInput, briskDescriptorsInput);
+    Ptr<Feature2D> brisk = BRISK::create(threshold, octaves, patternScale); // use trackbar for MAX FEATURES
+    brisk->detectAndCompute(briskObjectImg, Mat(), briskKeypointsObject, briskDescriptorsObject);
+    brisk->detectAndCompute(briskInputImg, Mat(), briskKeypointsInput, briskDescriptorsInput);
     drawKeypoints(briskObjectImg, briskKeypointsObject, briskObjectImg);
     drawKeypoints(briskInputImg, briskKeypointsInput, briskInputImg);
 
@@ -95,12 +99,12 @@ int main(int argc, const char** argv) {
     std::vector<KeyPoint> akazeKeypointsObject, akazeKeypointsInput;
     Mat akazeDescriptorsObject, akazeDescriptorsInput;
 
-    // Detect ORB features and compute descriptors.
+    // Detect AKAZE features and compute descriptors.
     Mat akazeObjectImg = objectImg.clone();
     Mat akazeInputImg = inputImg.clone();
-    Ptr<Feature2D> akaze = AKAZE::create(500); // use trackbar for MAX FEATURES
-    orb->detectAndCompute(akazeObjectImg, Mat(), akazeKeypointsObject, akazeDescriptorsObject);
-    orb->detectAndCompute(akazeInputImg, Mat(), akazeKeypointsInput, akazeDescriptorsInput);
+    Ptr<Feature2D> akaze = AKAZE::create(); // use trackbar for MAX FEATURES
+    akaze->detectAndCompute(akazeObjectImg, Mat(), akazeKeypointsObject, akazeDescriptorsObject);
+    akaze->detectAndCompute(akazeInputImg, Mat(), akazeKeypointsInput, akazeDescriptorsInput);
     drawKeypoints(akazeObjectImg, akazeKeypointsObject, akazeObjectImg);
     drawKeypoints(akazeInputImg, akazeKeypointsInput, akazeInputImg);
 
