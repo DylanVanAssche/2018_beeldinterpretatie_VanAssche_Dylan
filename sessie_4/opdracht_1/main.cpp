@@ -4,6 +4,10 @@
 using namespace std;
 using namespace cv;
 
+
+// TO DO: use only detect, compute is for the next opdracht
+// TO DO: 3 detectors in 1 window
+// TO DO: move everything to a function
 int main(int argc, const char** argv) {
     CommandLineParser parser(argc, argv,
                              "{ help h usage ? | | Shows this message.}"
