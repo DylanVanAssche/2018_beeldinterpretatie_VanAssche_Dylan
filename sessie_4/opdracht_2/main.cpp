@@ -52,7 +52,7 @@ int main(int argc, const char** argv) {
     imshow("Input image", inputImg);
 
 
-    /*// Find keypoints using ORB
+    // Find keypoints using ORB
     // Variables to store keypoints and descriptors
     std::vector<KeyPoint> orbKeypointsObject, orbKeypointsInput;
     Mat orbDescriptorsObject, ordDescriptorsInput;
@@ -66,20 +66,49 @@ int main(int argc, const char** argv) {
     drawKeypoints(orbObjectImg, orbKeypointsObject, orbObjectImg);
     drawKeypoints(orbInputImg, orbKeypointsInput, orbInputImg);
 
-    namedWindow("Object image ORB", WINDOW_AUTOSIZE);
-    namedWindow("Input image ORB", WINDOW_AUTOSIZE);
-    imshow("Object image ORB", orbObjectImg);
-    imshow("Input image ORB", orbInputImg);
+    namedWindow("Object image ORB keypoints", WINDOW_AUTOSIZE);
+    namedWindow("Input image ORB keypoints", WINDOW_AUTOSIZE);
+    imshow("Object image ORB keypoints", orbObjectImg);
+    imshow("Input image ORB keypoints", orbInputImg);
 
-    // Find keypoints using BRISK
+    // Match features.
+    std::vector<DMatch> matches;
+    Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce-Hamming");
+    matcher->match(ordDescriptorsInput, orbDescriptorsObject, matches, Mat());
+    // use BFMatcher matcher(NORM_L2) // euclisdische distance NORM_L2, L2 isn't perfect, others are better
+    // std:vector<DMatch> matches;
+    // matcher.match(descriptor input, descriptor 2, matches);
+
+    // Sort matches by score
+    std::sort(matches.begin(), matches.end());
+
+    // Remove not so good matches
+    #define GOOD_MATCH_PERCENT 0.8 // trackbar
+    const int numGoodMatches = matches.size() * GOOD_MATCH_PERCENT;
+    matches.erase(matches.begin()+numGoodMatches, matches.end());
+
+
+    // Draw top matches
+    Mat orbMatches;
+    drawMatches(orbInputImg, orbKeypointsInput, orbObjectImg, orbKeypointsObject, matches, orbMatches);
+    //imwrite("matches.jpg", imMatches);
+
+    namedWindow("Image ORB matches", WINDOW_AUTOSIZE);
+    imshow("Image ORB matches", orbMatches);
+
+    /*// Find keypoints using BRISK
     // Variables to store keypoints and descriptors
+    int threshold=60; // trackbar?
+    int octaves=4; //(pyramid layer) from which the keypoint has been extracted
+    float patternScale=1.0f;
     std::vector<KeyPoint> briskKeypointsObject, briskKeypointsInput;
     Mat briskDescriptorsObject, briskDescriptorsInput;
 
-    // Detect ORB features and compute descriptors.
+
+    // Detect BRISK features and compute descriptors.
     Mat briskObjectImg = objectImg.clone();
     Mat briskInputImg = inputImg.clone();
-    Ptr<Feature2D> brisk = BRISK::create(500); // use trackbar for MAX FEATURES
+    Ptr<Feature2D> brisk = BRISK::create(threshold, octaves, patternScale); // use trackbar for MAX FEATURES
     brisk->detectAndCompute(briskObjectImg, Mat(), briskKeypointsObject, briskDescriptorsObject);
     brisk->detectAndCompute(briskInputImg, Mat(), briskKeypointsInput, briskDescriptorsInput);
     drawKeypoints(briskObjectImg, briskKeypointsObject, briskObjectImg);
@@ -88,27 +117,26 @@ int main(int argc, const char** argv) {
     namedWindow("Object image BRISK", WINDOW_AUTOSIZE);
     namedWindow("Input image BRISK", WINDOW_AUTOSIZE);
     imshow("Object image BRISK", briskObjectImg);
-    imshow("Input image BRISK", briskInputImg);*/
+    imshow("Input image BRISK", briskInputImg);
 
     // Find keypoints using AKAZE
     // Variables to store keypoints and descriptors
     std::vector<KeyPoint> akazeKeypointsObject, akazeKeypointsInput;
     Mat akazeDescriptorsObject, akazeDescriptorsInput;
 
-    // Detect ORB features and compute descriptors.
+    // Detect AKAZE features and compute descriptors.
     Mat akazeObjectImg = objectImg.clone();
     Mat akazeInputImg = inputImg.clone();
-    Ptr<Feature2D> akaze = AKAZE::create(500); // use trackbar for MAX FEATURES
+    Ptr<Feature2D> akaze = AKAZE::create(); // use trackbar for MAX FEATURES
     akaze->detectAndCompute(akazeObjectImg, Mat(), akazeKeypointsObject, akazeDescriptorsObject);
     akaze->detectAndCompute(akazeInputImg, Mat(), akazeKeypointsInput, akazeDescriptorsInput);
     drawKeypoints(akazeObjectImg, akazeKeypointsObject, akazeObjectImg);
     drawKeypoints(akazeInputImg, akazeKeypointsInput, akazeInputImg);
 
-
     namedWindow("Object image AKAZE", WINDOW_AUTOSIZE);
     namedWindow("Input image AKAZE", WINDOW_AUTOSIZE);
     imshow("Object image AKAZE", akazeObjectImg);
-    imshow("Input image AKAZE", akazeInputImg);
+    imshow("Input image AKAZE", akazeInputImg);*/
 
     // Wait until the user decides to exit the program.
     waitKey(0);
