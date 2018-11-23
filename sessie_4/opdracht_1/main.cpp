@@ -51,6 +51,64 @@ int main(int argc, const char** argv) {
     imshow("Object image", objectImg);
     imshow("Input image", inputImg);
 
+
+    // Find keypoints using ORB
+    // Variables to store keypoints and descriptors
+    std::vector<KeyPoint> orbKeypointsObject, orbKeypointsInput;
+    Mat orbDescriptorsObject, ordDescriptorsInput;
+
+    // Detect ORB features and compute descriptors.
+    Mat orbObjectImg = objectImg.clone();
+    Mat orbInputImg = inputImg.clone();
+    Ptr<Feature2D> orb = ORB::create(500); // use trackbar for MAX FEATURES
+    orb->detectAndCompute(orbObjectImg, Mat(), orbKeypointsObject, orbDescriptorsObject);
+    orb->detectAndCompute(orbInputImg, Mat(), orbKeypointsInput, ordDescriptorsInput);
+    drawKeypoints(orbObjectImg, orbKeypointsObject, orbObjectImg);
+    drawKeypoints(orbInputImg, orbKeypointsInput, orbInputImg);
+
+    namedWindow("Object image ORB", WINDOW_AUTOSIZE);
+    namedWindow("Input image ORB", WINDOW_AUTOSIZE);
+    imshow("Object image ORB", orbObjectImg);
+    imshow("Input image ORB", orbInputImg);
+
+    // Find keypoints using BRISK
+    // Variables to store keypoints and descriptors
+    std::vector<KeyPoint> briskKeypointsObject, briskKeypointsInput;
+    Mat briskDescriptorsObject, briskDescriptorsInput;
+
+    // Detect ORB features and compute descriptors.
+    Mat briskObjectImg = objectImg.clone();
+    Mat briskInputImg = inputImg.clone();
+    Ptr<Feature2D> brisk = BRISK::create(500); // use trackbar for MAX FEATURES
+    orb->detectAndCompute(briskObjectImg, Mat(), briskKeypointsObject, briskDescriptorsObject);
+    orb->detectAndCompute(briskInputImg, Mat(), briskKeypointsInput, briskDescriptorsInput);
+    drawKeypoints(briskObjectImg, briskKeypointsObject, briskObjectImg);
+    drawKeypoints(briskInputImg, briskKeypointsInput, briskInputImg);
+
+    namedWindow("Object image BRISK", WINDOW_AUTOSIZE);
+    namedWindow("Input image BRISK", WINDOW_AUTOSIZE);
+    imshow("Object image BRISK", briskObjectImg);
+    imshow("Input image BRISK", briskInputImg);
+
+    // Find keypoints using AKAZE
+    // Variables to store keypoints and descriptors
+    std::vector<KeyPoint> akazeKeypointsObject, akazeKeypointsInput;
+    Mat akazeDescriptorsObject, akazeDescriptorsInput;
+
+    // Detect ORB features and compute descriptors.
+    Mat akazeObjectImg = objectImg.clone();
+    Mat akazeInputImg = inputImg.clone();
+    Ptr<Feature2D> akaze = AKAZE::create(500); // use trackbar for MAX FEATURES
+    orb->detectAndCompute(akazeObjectImg, Mat(), akazeKeypointsObject, akazeDescriptorsObject);
+    orb->detectAndCompute(akazeInputImg, Mat(), akazeKeypointsInput, akazeDescriptorsInput);
+    drawKeypoints(akazeObjectImg, akazeKeypointsObject, akazeObjectImg);
+    drawKeypoints(akazeInputImg, akazeKeypointsInput, akazeInputImg);
+
+    namedWindow("Object image AKAZE", WINDOW_AUTOSIZE);
+    namedWindow("Input image AKAZE", WINDOW_AUTOSIZE);
+    imshow("Object image AKAZE", akazeObjectImg);
+    imshow("Input image AKAZE", akazeInputImg);
+
     // Wait until the user decides to exit the program.
     waitKey(0);
     return 0;
