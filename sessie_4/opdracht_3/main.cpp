@@ -118,6 +118,7 @@ Mat drawMatchesForDetector(Mat input, Mat object, Ptr<Feature2D> detector) {
 
     BFMatcher matcher = BFMatcher(NORM_L2); // Eucledian distance is only compatible with ORB
     matcher.match(descriptorObject, descriptorInput, matches);
+    cout << "Found " << matches.size() << " matches using BFMatcher" << endl;
 
     /*
      * Filter matches by distance before applying RANSAC
@@ -166,7 +167,7 @@ Mat drawMatchesForDetector(Mat input, Mat object, Ptr<Feature2D> detector) {
     vector<Point2f> inputLoc;
 
     // Retrieve all the keypoints that were accepted by our filter
-    cerr << "Matches size:" << validMatches.size() << endl;
+    cout << "Found " << validMatches.size() << " valid matches after distance filtering" << endl;
     for(int i=0; i < validMatches.size(); i++)
     {
         objectLoc.push_back(keypointsObject[validMatches.at(i).queryIdx].pt);
@@ -188,7 +189,7 @@ Mat drawMatchesForDetector(Mat input, Mat object, Ptr<Feature2D> detector) {
     perspectiveTransform(objectCorners, sceneCorners, H);
 
     // Draw a box around the scene location after transforming
-    RNG rng(RNG_INIT);
+    RNG rng(RNG_INIT); // Random color for the box
     Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
     line(result, sceneCorners[0] + Point2f(copyObject.cols, 0), sceneCorners[1] + Point2f(copyObject.cols, 0), color, 4);
     line(result, sceneCorners[1] + Point2f(copyObject.cols, 0), sceneCorners[2] + Point2f(copyObject.cols, 0), color, 4);
