@@ -1,13 +1,5 @@
-#include <iostream>
-#include <opencv2/opencv.hpp>
+#include "main.h"
 
-using namespace std;
-using namespace cv;
-
-
-// TO DO: use only detect, compute is for the next opdracht
-// TO DO: 3 detectors in 1 window
-// TO DO: move everything to a function
 int main(int argc, const char** argv) {
     CommandLineParser parser(argc, argv,
                              "{ help h usage ? | | Shows this message.}"
@@ -55,69 +47,71 @@ int main(int argc, const char** argv) {
     imshow("Object image", objectImg);
     imshow("Input image", inputImg);
 
+    vector<Mat> objectImages;
+    vector<Mat> inputImages;
+    vector< Ptr<Feature2D> > detectors;
+    Mat resultObjectImg, resultInputImg;
+    detectors.push_back(ORB::create()); // Default parameters for every detector, you can change them if you want
+    detectors.push_back(BRISK::create());
+    detectors.push_back(AKAZE::create());
 
-    // Find keypoints using ORB
-    // Variables to store keypoints and descriptors
-    std::vector<KeyPoint> orbKeypointsObject, orbKeypointsInput;
-    Mat orbDescriptorsObject, ordDescriptorsInput;
+    for(int i=0; i < detectors.size(); i++) {
+        resultObjectImg = drawKeypointsForDetector(objectImg, detectors.at(i));
+        resultInputImg = drawKeypointsForDetector(inputImg, detectors.at(i));
+        objectImages.push_back(resultObjectImg);
+        inputImages.push_back(resultInputImg);
+    }
 
-    // Detect ORB features and compute descriptors.
-    Mat orbObjectImg = objectImg.clone();
-    Mat orbInputImg = inputImg.clone();
-    Ptr<Feature2D> orb = ORB::create(500); // use trackbar for MAX FEATURES
-    orb->detectAndCompute(orbObjectImg, Mat(), orbKeypointsObject, orbDescriptorsObject);
-    orb->detectAndCompute(orbInputImg, Mat(), orbKeypointsInput, ordDescriptorsInput);
-    drawKeypoints(orbObjectImg, orbKeypointsObject, orbObjectImg);
-    drawKeypoints(orbInputImg, orbKeypointsInput, orbInputImg);
+    Mat objectImagesConcat = generateMultiHorizontalImage(objectImages);
+    Mat inputImagesConcat = generateMultiHorizontalImage(inputImages);
 
-    namedWindow("Object image ORB", WINDOW_AUTOSIZE);
-    namedWindow("Input image ORB", WINDOW_AUTOSIZE);
-    imshow("Object image ORB", orbObjectImg);
-    imshow("Input image ORB", orbInputImg);
-
-    // Find keypoints using BRISK
-    // Variables to store keypoints and descriptors
-    int threshold=60; // trackbar?
-    int octaves=4; //(pyramid layer) from which the keypoint has been extracted
-    float patternScale=1.0f;
-    std::vector<KeyPoint> briskKeypointsObject, briskKeypointsInput;
-    Mat briskDescriptorsObject, briskDescriptorsInput;
-
-
-    // Detect BRISK features and compute descriptors.
-    Mat briskObjectImg = objectImg.clone();
-    Mat briskInputImg = inputImg.clone();
-    Ptr<Feature2D> brisk = BRISK::create(threshold, octaves, patternScale); // use trackbar for MAX FEATURES
-    brisk->detectAndCompute(briskObjectImg, Mat(), briskKeypointsObject, briskDescriptorsObject);
-    brisk->detectAndCompute(briskInputImg, Mat(), briskKeypointsInput, briskDescriptorsInput);
-    drawKeypoints(briskObjectImg, briskKeypointsObject, briskObjectImg);
-    drawKeypoints(briskInputImg, briskKeypointsInput, briskInputImg);
-
-    namedWindow("Object image BRISK", WINDOW_AUTOSIZE);
-    namedWindow("Input image BRISK", WINDOW_AUTOSIZE);
-    imshow("Object image BRISK", briskObjectImg);
-    imshow("Input image BRISK", briskInputImg);
-
-    // Find keypoints using AKAZE
-    // Variables to store keypoints and descriptors
-    std::vector<KeyPoint> akazeKeypointsObject, akazeKeypointsInput;
-    Mat akazeDescriptorsObject, akazeDescriptorsInput;
-
-    // Detect AKAZE features and compute descriptors.
-    Mat akazeObjectImg = objectImg.clone();
-    Mat akazeInputImg = inputImg.clone();
-    Ptr<Feature2D> akaze = AKAZE::create(); // use trackbar for MAX FEATURES
-    akaze->detectAndCompute(akazeObjectImg, Mat(), akazeKeypointsObject, akazeDescriptorsObject);
-    akaze->detectAndCompute(akazeInputImg, Mat(), akazeKeypointsInput, akazeDescriptorsInput);
-    drawKeypoints(akazeObjectImg, akazeKeypointsObject, akazeObjectImg);
-    drawKeypoints(akazeInputImg, akazeKeypointsInput, akazeInputImg);
-
-    namedWindow("Object image AKAZE", WINDOW_AUTOSIZE);
-    namedWindow("Input image AKAZE", WINDOW_AUTOSIZE);
-    imshow("Object image AKAZE", akazeObjectImg);
-    imshow("Input image AKAZE", akazeInputImg);
+    namedWindow("Object detectors ORB | BRISK | AKAZE", WINDOW_AUTOSIZE);
+    namedWindow("Input detectors ORB | BRISK | AKAZE", WINDOW_AUTOSIZE);
+    imshow("Object detectors ORB | BRISK | AKAZE", objectImagesConcat);
+    imshow("Input detectors ORB | BRISK | AKAZE", inputImagesConcat);
 
     // Wait until the user decides to exit the program.
     waitKey(0);
     return 0;
+}
+
+/**
+ * Draws the keypoints for a given detector on a new image and returns it.
+ * @author Dylan Van Assche
+ * @param Mat input
+ * @param Ptr<Feature2D> detector
+ * @return Mat output
+ */
+Mat drawKeypointsForDetector(Mat input, Ptr<Feature2D> detector) {
+    vector<KeyPoint> keypoints;
+    Mat output = input.clone(); // Keep original
+
+    detector->detect(output, keypoints); // find keypoints
+    drawKeypoints(output, keypoints, output);
+
+    return output;
+}
+
+/**
+ * Horizontally concats a vector of Mat objects to each other and returns the result.
+ * @author Dylan Van Assche
+ * @param vector<Mat> images
+ * @return Mat result
+ */
+Mat generateMultiHorizontalImage(vector<Mat> images) {
+    Mat result;
+
+    // No empty vectors are allowed
+    if(images.size() < 0) {
+        return result;
+    }
+
+    // Save the first image without modifications
+    result = images.at(0).clone();
+
+    // Concat the rest of the images with the first one
+    for(int i=1; i < images.size(); i++) {
+        hconcat(result, images.at(i).clone(), result);
+    }
+    return result;
 }

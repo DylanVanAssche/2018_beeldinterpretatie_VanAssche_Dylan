@@ -1,8 +1,4 @@
-#include <iostream>
-#include <opencv2/opencv.hpp>
-
-using namespace std;
-using namespace cv;
+#include "main.h"
 
 int main(int argc, const char** argv) {
     CommandLineParser parser(argc, argv,
@@ -51,94 +47,102 @@ int main(int argc, const char** argv) {
     imshow("Object image", objectImg);
     imshow("Input image", inputImg);
 
+    vector<Mat> objectImages, inputImages, matchImages;
+    vector< Ptr<Feature2D> > detectors;
+    Mat resultObjectImg, resultInputImg, resultMatchImg;
+    detectors.push_back(ORB::create()); // Default parameters for every detector, you can change them if you want
+    //detectors.push_back(BRISK::create()); // Not compatible with NORM_L2 brute force matching
+    //detectors.push_back(AKAZE::create()); // Not compatible with NORM_L2 brute force matching
 
-    // Find keypoints using ORB
-    // Variables to store keypoints and descriptors
-    std::vector<KeyPoint> orbKeypointsObject, orbKeypointsInput;
-    Mat orbDescriptorsObject, ordDescriptorsInput;
+    for(int i=0; i < detectors.size(); i++) {
+        resultObjectImg = drawKeypointsForDetector(objectImg, detectors.at(i));
+        resultInputImg = drawKeypointsForDetector(inputImg, detectors.at(i));
+        resultMatchImg = drawMatchesForDetector(inputImg, objectImg, detectors.at(i));
+        objectImages.push_back(resultObjectImg);
+        inputImages.push_back(resultInputImg);
+        matchImages.push_back(resultMatchImg);
+    }
 
-    // Detect ORB features and compute descriptors.
-    Mat orbObjectImg = objectImg.clone();
-    Mat orbInputImg = inputImg.clone();
-    Ptr<Feature2D> orb = ORB::create(500); // use trackbar for MAX FEATURES
-    orb->detectAndCompute(orbObjectImg, Mat(), orbKeypointsObject, orbDescriptorsObject);
-    orb->detectAndCompute(orbInputImg, Mat(), orbKeypointsInput, ordDescriptorsInput);
-    drawKeypoints(orbObjectImg, orbKeypointsObject, orbObjectImg);
-    drawKeypoints(orbInputImg, orbKeypointsInput, orbInputImg);
+    Mat objectImagesConcat = generateMultiHorizontalImage(objectImages);
+    Mat inputImagesConcat = generateMultiHorizontalImage(inputImages);
+    Mat matchImagesConcat = generateMultiHorizontalImage(matchImages);
 
-    namedWindow("Object image ORB keypoints", WINDOW_AUTOSIZE);
-    namedWindow("Input image ORB keypoints", WINDOW_AUTOSIZE);
-    imshow("Object image ORB keypoints", orbObjectImg);
-    imshow("Input image ORB keypoints", orbInputImg);
-
-    // Match features.
-    std::vector<DMatch> matches;
-    Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce-Hamming");
-    matcher->match(ordDescriptorsInput, orbDescriptorsObject, matches, Mat());
-    // use BFMatcher matcher(NORM_L2) // euclisdische distance NORM_L2, L2 isn't perfect, others are better
-    // std:vector<DMatch> matches;
-    // matcher.match(descriptor input, descriptor 2, matches);
-
-    // Sort matches by score
-    std::sort(matches.begin(), matches.end());
-
-    // Remove not so good matches
-    #define GOOD_MATCH_PERCENT 0.8 // trackbar
-    const int numGoodMatches = matches.size() * GOOD_MATCH_PERCENT;
-    matches.erase(matches.begin()+numGoodMatches, matches.end());
-
-
-    // Draw top matches
-    Mat orbMatches;
-    drawMatches(orbInputImg, orbKeypointsInput, orbObjectImg, orbKeypointsObject, matches, orbMatches);
-    //imwrite("matches.jpg", imMatches);
-
-    namedWindow("Image ORB matches", WINDOW_AUTOSIZE);
-    imshow("Image ORB matches", orbMatches);
-
-    /*// Find keypoints using BRISK
-    // Variables to store keypoints and descriptors
-    int threshold=60; // trackbar?
-    int octaves=4; //(pyramid layer) from which the keypoint has been extracted
-    float patternScale=1.0f;
-    std::vector<KeyPoint> briskKeypointsObject, briskKeypointsInput;
-    Mat briskDescriptorsObject, briskDescriptorsInput;
-
-
-    // Detect BRISK features and compute descriptors.
-    Mat briskObjectImg = objectImg.clone();
-    Mat briskInputImg = inputImg.clone();
-    Ptr<Feature2D> brisk = BRISK::create(threshold, octaves, patternScale); // use trackbar for MAX FEATURES
-    brisk->detectAndCompute(briskObjectImg, Mat(), briskKeypointsObject, briskDescriptorsObject);
-    brisk->detectAndCompute(briskInputImg, Mat(), briskKeypointsInput, briskDescriptorsInput);
-    drawKeypoints(briskObjectImg, briskKeypointsObject, briskObjectImg);
-    drawKeypoints(briskInputImg, briskKeypointsInput, briskInputImg);
-
-    namedWindow("Object image BRISK", WINDOW_AUTOSIZE);
-    namedWindow("Input image BRISK", WINDOW_AUTOSIZE);
-    imshow("Object image BRISK", briskObjectImg);
-    imshow("Input image BRISK", briskInputImg);
-
-    // Find keypoints using AKAZE
-    // Variables to store keypoints and descriptors
-    std::vector<KeyPoint> akazeKeypointsObject, akazeKeypointsInput;
-    Mat akazeDescriptorsObject, akazeDescriptorsInput;
-
-    // Detect AKAZE features and compute descriptors.
-    Mat akazeObjectImg = objectImg.clone();
-    Mat akazeInputImg = inputImg.clone();
-    Ptr<Feature2D> akaze = AKAZE::create(); // use trackbar for MAX FEATURES
-    akaze->detectAndCompute(akazeObjectImg, Mat(), akazeKeypointsObject, akazeDescriptorsObject);
-    akaze->detectAndCompute(akazeInputImg, Mat(), akazeKeypointsInput, akazeDescriptorsInput);
-    drawKeypoints(akazeObjectImg, akazeKeypointsObject, akazeObjectImg);
-    drawKeypoints(akazeInputImg, akazeKeypointsInput, akazeInputImg);
-
-    namedWindow("Object image AKAZE", WINDOW_AUTOSIZE);
-    namedWindow("Input image AKAZE", WINDOW_AUTOSIZE);
-    imshow("Object image AKAZE", akazeObjectImg);
-    imshow("Input image AKAZE", akazeInputImg);*/
+    namedWindow("Object detectors ORB", WINDOW_AUTOSIZE);
+    namedWindow("Input detectors ORB", WINDOW_AUTOSIZE);
+    namedWindow("Matches detectors ORB", WINDOW_AUTOSIZE);
+    imshow("Object detectors ORB", objectImagesConcat);
+    imshow("Input detectors ORB", inputImagesConcat);
+    imshow("Matches detectors ORB", matchImagesConcat);
 
     // Wait until the user decides to exit the program.
     waitKey(0);
     return 0;
+}
+
+/**
+ * Draws the keypoints for a given detector on a new image and returns it.
+ * @author Dylan Van Assche
+ * @param Mat input
+ * @param Ptr<Feature2D> detector
+ * @return Mat output
+ */
+Mat drawKeypointsForDetector(Mat input, Ptr<Feature2D> detector) {
+    vector<KeyPoint> keypoints;
+    Mat output = input.clone(); // Keep original
+
+    detector->detect(output, keypoints); // find keypoints
+    drawKeypoints(output, keypoints, output);
+
+    return output;
+}
+
+/**
+ * Draws the matches for a given detector on a new image and returns it.
+ * @author Dylan Van Assche
+ * @param Mat input
+ * @param Mat object
+ * @param Ptr<Feature2D> detector
+ * @return Mat result
+ */
+Mat drawMatchesForDetector(Mat input, Mat object, Ptr<Feature2D> detector) {
+    vector<KeyPoint> keypointsObject, keypointsInput;
+    vector<DMatch> matches;
+    Mat descriptorObject, descriptorInput;
+    Mat copyInput = input.clone(); // Keep original
+    Mat copyObject = object.clone(); // Keep original
+    Mat result;
+
+    detector->detectAndCompute(copyInput, Mat(), keypointsInput, descriptorInput); // find keypoints for input
+    detector->detectAndCompute(copyObject, Mat(), keypointsObject, descriptorObject); // find keypoints for object
+
+    BFMatcher matcher = BFMatcher(NORM_L2); // Eucledian distance is only compatible with ORB
+    matcher.match(descriptorObject, descriptorInput, matches);
+
+    drawMatches(copyObject, keypointsObject, copyInput, keypointsInput, matches, result);
+
+    return result;
+}
+
+/**
+ * Horizontally concats a vector of Mat objects to each other and returns the result.
+ * @author Dylan Van Assche
+ * @param vector<Mat> images
+ * @return Mat result
+ */
+Mat generateMultiHorizontalImage(vector<Mat> images) {
+    Mat result;
+
+    // No empty vectors are allowed
+    if(images.size() < 0) {
+        return result;
+    }
+
+    // Save the first image without modifications
+    result = images.at(0).clone();
+
+    // Concat the rest of the images with the first one
+    for(int i=1; i < images.size(); i++) {
+        hconcat(result, images.at(i).clone(), result);
+    }
+    return result;
 }
