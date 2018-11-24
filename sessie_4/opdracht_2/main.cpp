@@ -146,3 +146,4 @@ Mat generateMultiHorizontalImage(vector<Mat> images) {
     }
     return result;
 }
+

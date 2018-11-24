@@ -271,7 +271,8 @@ Mat drawKeypointsForDetector(Mat input, Ptr<Feature2D> detector) {
 }
 
 /**
- * Draws the matches for a given detector on a new image and returns it.
+ * Draws the matches for a given detector on a new image and returns it. Before drawing, the matches are filtered and
+ * RANSAC is applied to remove any outliers.
  * @author Dylan Van Assche
  * @param Mat input
  * @param Mat object
@@ -292,7 +293,73 @@ Mat drawMatchesForDetector(Mat input, Mat object, Ptr<Feature2D> detector) {
     BFMatcher matcher = BFMatcher(NORM_L2); // Eucledian distance is only compatible with ORB
     matcher.match(descriptorObject, descriptorInput, matches);
 
-    drawMatches(copyObject, keypointsObject, copyInput, keypointsInput, matches, result);
+    // Filter matches by distance before applying RANSAC
+    // https://docs.opencv.org/3.0-beta/doc/tutorials/features2d/feature_homography/feature_homography.html
+    double distance, min, max;
+    vector< DMatch > validMatches;
+
+    // Find min and max distance
+    for(int i=0; i < descriptorObject.rows; i++) {
+        distance = matches.at(i).distance;
+
+        // Avoid skipping the next for loops
+        if(distance == 0) {
+            continue;
+        }
+
+        // Valid distance, update
+        if(distance < min) {
+            min = distance;
+        }
+        if(distance > max) {
+            max = distance;
+        }
+    }
+
+    // Filter
+    for(int i=0; i < descriptorObject.rows; i++ )
+    {
+        if(matches.at(i).distance < DISTANCE_MULTIPLIER * min)
+        {
+            validMatches.push_back(matches.at(i));
+        }
+    }
+
+    // Show matches on result image
+    drawMatches(copyObject, keypointsObject, copyInput, keypointsInput, validMatches, result);
+
+    // Apply RANSAC to create a geometric model of the matches and filter out any outliers
+    vector<Point2f> objectLoc;
+    vector<Point2f> inputLoc;
+
+    // Retrieve all the keypoints that were accepted by our filter
+    for(int i=0; i < validMatches.size(); i++)
+    {
+        objectLoc.push_back(keypointsObject[validMatches.at(i).queryIdx].pt);
+        inputLoc.push_back(keypointsInput[validMatches.at(i).trainIdx].pt);
+    }
+
+    Mat H = findHomography(objectLoc, inputLoc, RANSAC);
+
+    // Find the corners of the object image
+    vector<Point2f> sceneCorners(4);
+    vector<Point2f> objectCorners(4);
+    objectCorners[0] = cvPoint(0,0);
+    objectCorners[1] = cvPoint(copyObject.cols, 0 );
+    objectCorners[2] = cvPoint(copyObject.cols, copyObject.rows);
+    objectCorners[3] = cvPoint(0, copyObject.rows);
+
+
+    // Transform from object to scene using the given RANSAC homography
+    perspectiveTransform(objectCorners, sceneCorners, H);
+
+    // Draw a box around the scene location after transforming
+    RNG rng(RNG_INIT);
+    Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+    line(result, sceneCorners[0] + Point2f(copyObject.cols, 0), sceneCorners[1] + Point2f(copyObject.cols, 0), color, 4);
+    line(result, sceneCorners[1] + Point2f(copyObject.cols, 0), sceneCorners[2] + Point2f(copyObject.cols, 0), color, 4);
+    line(result, sceneCorners[2] + Point2f(copyObject.cols, 0), sceneCorners[3] + Point2f(copyObject.cols, 0), color, 4);
+    line(result, sceneCorners[3] + Point2f(copyObject.cols, 0), sceneCorners[0] + Point2f(copyObject.cols, 0), color, 4);
 
     return result;
 }

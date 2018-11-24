@@ -3,6 +3,10 @@
 
 #include <iostream>
 #include <opencv2/opencv.hpp>
+
+#define DISTANCE_MULTIPLIER 3
+#define RNG_INIT 12345
+
 using namespace std;
 using namespace cv;
 
