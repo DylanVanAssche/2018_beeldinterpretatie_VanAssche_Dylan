@@ -4,7 +4,7 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
-#define DISTANCE_MULTIPLIER 3
+#define DISTANCE_MULTIPLIER 0.7
 #define RNG_INIT 12345
 
 using namespace std;
