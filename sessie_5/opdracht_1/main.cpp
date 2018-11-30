@@ -48,6 +48,8 @@ void mouse(int event, int x, int y, int flags, void* userdata) {
             }
         }
     }
+
+    runner(0, NULL);
 }
 
 
@@ -92,6 +94,7 @@ int main(int argc, const char** argv) {
     setMouseCallback("Strawberry image", mouse, NULL);
     createTrackbar("Mode:\n1=POSITIVE\n0=NEGATIVE", "Strawberry image", &mode, 1, runner); // 0 - 1
 
+
     runner(0, NULL);
 
     // Wait until the user decides to exit the program.
@@ -101,5 +104,14 @@ int main(int argc, const char** argv) {
 
 void runner(int trackbarPos, void *data)
 {
-    imshow("Strawberry image", strawberryImg);
+    Mat showPointsImg = strawberryImg.clone();
+    int thickness = -1;
+    int radius = 5;
+    for(int i=0; i < savedNegativePoints.size(); i++) {
+        circle(showPointsImg, savedNegativePoints.at(i), radius, Scalar(0, 0, 255), thickness);
+    }
+    for(int i=0; i < savedPositivePoints.size(); i++) {
+        circle(showPointsImg, savedPositivePoints.at(i), radius, Scalar(0, 255, 0), thickness);
+    }
+    imshow("Strawberry image", showPointsImg);
 }
