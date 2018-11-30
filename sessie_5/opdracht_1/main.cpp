@@ -4,6 +4,53 @@
 using namespace std;
 using namespace cv;
 
+vector<Point2d> savedPositivePoints;
+vector<Point2d> savedNegativePoints;
+Mat strawberryImg;
+int mode = 0;
+
+void runner(int trackbarPos, void *data);
+void mouse(int event, int x, int y, int flags, void* userdata) {
+    if  ( event == EVENT_LBUTTONDOWN )
+    {
+        cout << "Left button of the mouse is clicked - position (" << x << ", " << y << ")" << endl;
+        Point2d p = Point2d(x, y);
+        if(mode) {
+            savedPositivePoints.push_back(p);
+        }
+        else {
+            savedNegativePoints.push_back(p);
+        }
+    }
+    else if  ( event == EVENT_RBUTTONDOWN )
+    {
+        cout << "Right button of the mouse is clicked - position (" << x << ", " << y << ")" << endl;
+        if(mode) {
+            savedPositivePoints.pop_back();
+        }
+        else {
+            savedNegativePoints.pop_back();
+        }
+    }
+    else if  ( event == EVENT_MBUTTONDOWN )
+    {
+        cout << "Middle button of the mouse is clicked - position (" << x << ", " << y << ")" << endl;
+        if(mode) {
+            cout << "POSITIVE" << endl;
+            for (int i = 0; i < savedPositivePoints.size(); i++) {
+                cout << savedPositivePoints.at(i) << endl;
+            }
+        }
+        else {
+            cout << "NEGATIVE" << endl;
+            for (int i = 0; i < savedNegativePoints.size(); i++) {
+                cout << savedNegativePoints.at(i) << endl;
+            }
+        }
+    }
+}
+
+
 int main(int argc, const char** argv) {
     CommandLineParser parser(argc, argv,
                              "{ help h usage ? | | Shows this message.}"
@@ -33,7 +80,6 @@ int main(int argc, const char** argv) {
     }
 
     // Try to load images
-    Mat strawberryImg;
     strawberryImg = imread(strawberry, IMREAD_COLOR);
 
     if(strawberryImg.empty()) {
@@ -43,9 +89,17 @@ int main(int argc, const char** argv) {
 
     // Displays the images in a window
     namedWindow("Strawberry image", WINDOW_AUTOSIZE);
-    imshow("Strawberry image", strawberryImg);
+    setMouseCallback("Strawberry image", mouse, NULL);
+    createTrackbar("Mode:\n1=POSITIVE\n0=NEGATIVE", "Strawberry image", &mode, 1, runner); // 0 - 1
+
+    runner(0, NULL);
 
     // Wait until the user decides to exit the program.
     waitKey(0);
     return 0;
+}
+
+void runner(int trackbarPos, void *data)
+{
+    imshow("Strawberry image", strawberryImg);
 }
