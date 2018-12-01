@@ -137,13 +137,13 @@ void runner(int trackbarPos, void *data)
 {
     Mat showPointsImg = strawberryImg.clone();
     GaussianBlur(showPointsImg, showPointsImg, Size(KERNEL_SIZE, KERNEL_SIZE), 0);
-    int thickness = -1;
-    int radius = 5;
-    for(int i=0; i < savedNegativePoints.size(); i++) {
-        circle(showPointsImg, savedNegativePoints.at(i), radius, Scalar(0, 0, 255), thickness);
+
+    for(int i=0; i < savedNegativePoints.size(); ++i) {
+        circle(showPointsImg, savedNegativePoints.at(i), CIRCLE_RADIUS, Scalar(0, 0, 255), CIRCLE_THICKNESS);
     }
-    for(int i=0; i < savedPositivePoints.size(); i++) {
-        circle(showPointsImg, savedPositivePoints.at(i), radius, Scalar(0, 255, 0), thickness);
+
+    for(int i=0; i < savedPositivePoints.size(); ++i) {
+        circle(showPointsImg, savedPositivePoints.at(i), CIRCLE_RADIUS, Scalar(0, 255, 0), CIRCLE_THICKNESS);
     }
 
     imshow("Strawberry image", showPointsImg);
