@@ -126,12 +126,19 @@ int main(int argc, const char** argv) {
     // Wait until the user decides to exit the selection of points.
     waitKey(0);
 
+    if(savedPositivePoints.size() == 0 || savedNegativePoints.size() == 0) {
+        cerr << "You should annotate at least some POSITIVE and NEGATIVE points on the image to continue";
+        return -1;
+    }
+
     // Calculate the descriptor
     Mat trainingData, labels;
     descriptor(strawberryImg, savedPositivePoints, savedNegativePoints, trainingData, labels);
 
     // Execute machine learning (Naive Bayes, K-Means Nearest Neighbor, Support Vector Machine)
     KNN(trainingData, labels);
+    NaiveBayes(trainingData, labels);
+    SVM(trainingData, labels);
 
     return 0;
 }
@@ -140,27 +147,97 @@ void runner(int trackbarPos, void *data)
 {
     Mat showPointsImg = strawberryImg.clone();
     GaussianBlur(showPointsImg, showPointsImg, Size(KERNEL_SIZE, KERNEL_SIZE), 0);
-    int thickness = -1;
-    int radius = 5;
+
     for(int i=0; i < savedNegativePoints.size(); i++) {
-        circle(showPointsImg, savedNegativePoints.at(i), radius, Scalar(0, 0, 255), thickness);
+        circle(showPointsImg, savedNegativePoints.at(i), CIRCLE_RADIUS, Scalar(0, 0, 255), CIRCLE_THICKNESS);
     }
+
     for(int i=0; i < savedPositivePoints.size(); i++) {
-        circle(showPointsImg, savedPositivePoints.at(i), radius, Scalar(0, 255, 0), thickness);
+        circle(showPointsImg, savedPositivePoints.at(i), CIRCLE_RADIUS, Scalar(0, 255, 0), CIRCLE_THICKNESS);
     }
 
     imshow("Strawberry image", showPointsImg);
 }
 
 void KNN(Mat trainingsData, Mat labels) {
+    cout << "Validating each pixel with KNN" << endl;
 
+    // Create KNearest classifier
+    Ptr<ml::KNearest> knn = ml::KNearest::create();
+
+    // Train classifier
+    knn->train(trainingsData, ml::ROW_SAMPLE, labels);
+    knn->setDefaultK(KNN_GROUPS);
+
+    // Show results
+    cout << "Showing KNN" << endl;
+    showResult(knn);
 }
 
 void NaiveBayes(Mat trainingsData, Mat labels) {
+    cout << "Validating each pixel with NaiveBayes" << endl;
 
+    // Create KNearest classifier
+    Ptr<ml::NormalBayesClassifier> nb = ml::NormalBayesClassifier::create();
+
+    // Train classifier
+    nb->train(trainingsData, ml::ROW_SAMPLE, labels);
+
+    // Show results
+    cout << "Showing NB" << endl;
+    showResult(nb);
 }
 
 void SVM(Mat trainingsData, Mat labels) {
+    cout << "Validating each pixel with SVM" << endl;
 
+    // Create KNearest classifier
+    Ptr<ml::SVM> svm = ml::SVM::create();
+    svm->setKernel(ml::SVM::LINEAR); // Exponential and other kernels are possible too (https://docs.opencv.org/3.0.0/d1/d2d/classcv_1_1ml_1_1SVM.html)
+    // https://docs.opencv.org/3.0.0/d1/d2d/classcv_1_1ml_1_1SVM.html -> default is SVM::C_SVC
+    svm->setTermCriteria(TermCriteria(TermCriteria::MAX_ITER, SVM_ITER, SVM_EPSILON)); // Stop after SVM_ITER iterations, SVM_EPSILON is the accuary or change in parameters (https://docs.opencv.org/3.0.0/d9/d5d/classcv_1_1TermCriteria.html)
+
+    // Train classifier
+    svm->train(trainingsData, ml::ROW_SAMPLE, labels);
+
+    // Show results
+    cout << "Showing SVM" << endl;
+    showResult(svm);
 }
-// substract green channel
+
+void showResult(Ptr<ml::StatModel> classifier) {
+    Mat label;
+    Mat mask = Mat::zeros(strawberryImg.rows, strawberryImg.cols, CV_8UC1);
+    Mat result;
+    Mat HSV = strawberryImg.clone();
+    cvtColor(HSV, HSV, CV_BGR2HSV);
+
+    // Validate each pixel
+    for(int r=0; r < HSV.rows; r++) {
+        for(int c=0; c < HSV.cols; c++) {
+            Vec3b pixel = HSV.at<Vec3b>(r, c); // findNearest wants it as a Mat object
+            Mat pixelMat = Mat(1, 3, CV_32FC1); // 1 pixel, 3 channels (HSV), CV_32FC1=defines both the depth of each element and the number of channels.
+            pixelMat.at<float>(0, 0) = pixel[0];
+            pixelMat.at<float>(0, 1) = pixel[1];
+            pixelMat.at<float>(0, 2) = pixel[2];
+            // https://docs.opencv.org/3.1.0/dd/de1/classcv_1_1ml_1_1KNearest.html
+            classifier->predict(pixelMat, label);
+            mask.at<uchar>(r, c) = (uchar)label.at<float>(0, 0); // CV_32F results
+        }
+    }
+    mask = mask * 255; // 0-1 -> 0-255
+
+    // Remove noise (opening)
+    erode(mask, mask, Mat(), Point(-1, -1), ML_OPENING_ITER);
+    dilate(mask, mask, Mat(), Point(-1, -1), ML_OPENING_ITER);
+
+    // Connect blobs (closing
+    dilate(mask, mask, Mat(), Point(-1, -1), ML_CLOSING_ITER);
+    erode(mask, mask, Mat(), Point(-1, -1), ML_CLOSING_ITER);
+
+    // Map mask and show result
+    strawberryImg.copyTo(result, mask);
+    imshow("Mask", mask);
+    imshow("Result", result);
+    waitKey(0);
+}
