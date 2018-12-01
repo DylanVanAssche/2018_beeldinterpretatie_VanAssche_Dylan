@@ -164,10 +164,12 @@ void KNN(Mat trainingsData, Mat labels) {
 
     // Create KNearest classifier
     Ptr<ml::KNearest> knn = ml::KNearest::create();
+    knn->setDefaultK(KNN_GROUPS);
+    knn->setIsClassifier(true);
+    knn->setAlgorithmType(ml::KNearest::BRUTE_FORCE);
 
     // Train classifier
     knn->train(trainingsData, ml::ROW_SAMPLE, labels);
-    knn->setDefaultK(KNN_GROUPS);
 
     // Show results
     cout << "Showing KNN" << endl;
@@ -194,7 +196,7 @@ void SVM(Mat trainingsData, Mat labels) {
     // Create KNearest classifier
     Ptr<ml::SVM> svm = ml::SVM::create();
     svm->setKernel(ml::SVM::LINEAR); // Exponential and other kernels are possible too (https://docs.opencv.org/3.0.0/d1/d2d/classcv_1_1ml_1_1SVM.html)
-    // https://docs.opencv.org/3.0.0/d1/d2d/classcv_1_1ml_1_1SVM.html -> default is SVM::C_SVC
+    svm->setType(ml::SVM::C_SVC); // https://docs.opencv.org/3.0.0/d1/d2d/classcv_1_1ml_1_1SVM.html -> default is SVM::C_SVC
     svm->setTermCriteria(TermCriteria(TermCriteria::MAX_ITER, SVM_ITER, SVM_EPSILON)); // Stop after SVM_ITER iterations, SVM_EPSILON is the accuary or change in parameters (https://docs.opencv.org/3.0.0/d9/d5d/classcv_1_1TermCriteria.html)
 
     // Train classifier
@@ -237,7 +239,7 @@ void showResult(Ptr<ml::StatModel> classifier) {
 
     // Map mask and show result
     strawberryImg.copyTo(result, mask);
-    imshow("Mask", mask);
-    imshow("Result", result);
+    imshow("Mask " + classifier->getDefaultName(), mask);
+    imshow("Result " + classifier->getDefaultName(), result);
     waitKey(0);
 }
