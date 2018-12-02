@@ -116,6 +116,12 @@ int main(int argc, const char** argv) {
         return -1;
     }
 
+    // Remove the green channel to improve red strawberries detection
+    Mat channels[3];
+    split(strawberryImg, channels);
+    channels[1] = Mat::zeros(strawberryImg.rows, strawberryImg.cols, CV_8UC1);
+    merge(channels, strawberryImg.channels(), strawberryImg);
+
     // Displays the images in a window
     namedWindow("Strawberry image", WINDOW_AUTOSIZE);
     setMouseCallback("Strawberry image", mouse, NULL);
@@ -130,13 +136,6 @@ int main(int argc, const char** argv) {
         cerr << "You should annotate at least some POSITIVE and NEGATIVE points on the image to continue";
         return -1;
     }
-
-    // Remove the green channel to improve red strawberries detection
-    Mat strawberryWithoutGreenImg = strawberryImg.clone();
-    Mat channels[3];
-    split(strawberryWithoutGreenImg, channels);
-    channels[1] = Mat::zeros(strawberryWithoutGreenImg.rows, strawberryWithoutGreenImg.cols, CV_8UC1);
-    merge(channels, strawberryWithoutGreenImg.channels(), strawberryWithoutGreenImg);
 
     // Calculate the descriptor
     Mat trainingData, labels;
