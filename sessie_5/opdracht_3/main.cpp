@@ -170,10 +170,6 @@ void KNN(Mat trainingsData, Mat labels) {
 
     // Train classifier
     knn->train(trainingsData, ml::ROW_SAMPLE, labels);
-
-    // Show results
-    cout << "Showing KNN" << endl;
-    showResult(knn);
 }
 
 void NaiveBayes(Mat trainingsData, Mat labels) {
@@ -184,10 +180,6 @@ void NaiveBayes(Mat trainingsData, Mat labels) {
 
     // Train classifier
     nb->train(trainingsData, ml::ROW_SAMPLE, labels);
-
-    // Show results
-    cout << "Showing NB" << endl;
-    showResult(nb);
 }
 
 void SVM(Mat trainingsData, Mat labels) {
@@ -201,48 +193,4 @@ void SVM(Mat trainingsData, Mat labels) {
 
     // Train classifier
     svm->train(trainingsData, ml::ROW_SAMPLE, labels);
-
-    // Show results
-    cout << "Showing SVM" << endl;
-    showResult(svm);
-}
-
-void showResult(Ptr<ml::StatModel> classifier) {
-    Mat label;
-    Mat mask = Mat::zeros(strawberryImg.rows, strawberryImg.cols, CV_8UC1);
-    Mat result;
-    Mat HSV = strawberryImg.clone();
-    cvtColor(HSV, HSV, CV_BGR2HSV);
-
-    // Validate each pixel
-    for(int r=0; r < HSV.rows; r++) {
-        for(int c=0; c < HSV.cols; c++) {
-            Vec3b pixel = HSV.at<Vec3b>(r, c); // findNearest wants it as a Mat object
-            Mat pixelMat = Mat(1, 3,
-                               CV_32FC1); // 1 pixel, 3 channels (HSV), CV_32FC1=defines both the depth of each element and the number of channels.
-            pixelMat.at<float>(0, 0) = pixel[0];
-            pixelMat.at<float>(0, 1) = pixel[1];
-            pixelMat.at<float>(0, 2) = pixel[2];
-            // https://docs.opencv.org/3.1.0/dd/de1/classcv_1_1ml_1_1KNearest.html
-            classifier->predict(pixelMat, label);
-            if (label.at<float>(0, 0)) {
-                mask.at<uchar>(r, c) = 1;
-            }
-        }
-    }
-    mask = mask * 255; // 0-1 -> 0-255
-
-    // Remove noise (opening)
-    erode(mask, mask, Mat(), Point(-1, -1), ML_OPENING_ITER);
-    dilate(mask, mask, Mat(), Point(-1, -1), ML_OPENING_ITER);
-
-    // Connect blobs (closing
-    dilate(mask, mask, Mat(), Point(-1, -1), ML_CLOSING_ITER);
-    erode(mask, mask, Mat(), Point(-1, -1), ML_CLOSING_ITER);
-
-    // Map mask and show result
-    strawberryImg.copyTo(result, mask);
-    imshow("Mask " + classifier->getDefaultName(), mask);
-    imshow("Result " + classifier->getDefaultName(), result);
-    waitKey(0);
 }
