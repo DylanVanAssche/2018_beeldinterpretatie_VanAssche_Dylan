@@ -67,3 +67,25 @@ script:
         - cmake CMakeLists.txt
         - make
         - cd ../..
+        # Build sessie_5
+        - cd sessie_5
+        - cd opdracht_1
+        - cmake CMakeLists.txt
+        - make
+        - cd ..
+        - cd opdracht_2
+        - cmake CMakeLists.txt
+        - make
+        - cd ..
+        - cd opdracht_3
+        - cmake CMakeLists.txt
+        - make
+        - cd ..
+        - cd opdracht_4
+        - cmake CMakeLists.txt
+        - make
+        - cd ..
+        - cd opdracht_extra
+        - cmake CMakeLists.txt
+        - make
+        - cd ../..
