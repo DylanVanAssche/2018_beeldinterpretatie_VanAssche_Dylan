@@ -22,3 +22,13 @@ rijpe aarbeien te detecteren.
 
 * **EXTRA**: Hoe kan je de segmentatie verbeteren? Denk na over het feit dat een
   rijpe aarbei meer rood en minder groen componenten geven.
+
+# Usage
+
+Enter one of the tasks folders using `cd opdracht_1` or `cd opdracht_2` or `cd opdracht_3` or `cd opdracht_4` or `cd opdracht_extra`.
+In this directory:
+- `cmake CMakeLists.txt`
+- `make`
+- `./sessie_5-1 --strawberry=strawberry1.tif` or `./sessie_5-2 --strawberry=strawberry1.tif` or `./sessie_5-3 --strawberry=strawberry1.tif` or `./sessie_5-4 --strawberry=strawberry1.tif` or `./sessie_5-extra --strawberry=strawberry1.tif`
+
+:bulb: You can also use `--strawberry=strawberry2.tif` when you run these projects.
