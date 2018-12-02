@@ -11,8 +11,8 @@ using namespace cv;
 #define CIRCLE_THICKNESS -1
 #define CIRCLE_RADIUS 5
 #define KNN_GROUPS 3
-#define ML_OPENING_ITER 0
-#define ML_CLOSING_ITER 0
+#define ML_OPENING_ITER 1
+#define ML_CLOSING_ITER 3
 #define SVM_ITER 100
 #define SVM_EPSILON 1e-6
 

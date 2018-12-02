@@ -218,13 +218,16 @@ void showResult(Ptr<ml::StatModel> classifier) {
     for(int r=0; r < HSV.rows; r++) {
         for(int c=0; c < HSV.cols; c++) {
             Vec3b pixel = HSV.at<Vec3b>(r, c); // findNearest wants it as a Mat object
-            Mat pixelMat = Mat(1, 3, CV_32FC1); // 1 pixel, 3 channels (HSV), CV_32FC1=defines both the depth of each element and the number of channels.
+            Mat pixelMat = Mat(1, 3,
+                               CV_32FC1); // 1 pixel, 3 channels (HSV), CV_32FC1=defines both the depth of each element and the number of channels.
             pixelMat.at<float>(0, 0) = pixel[0];
             pixelMat.at<float>(0, 1) = pixel[1];
             pixelMat.at<float>(0, 2) = pixel[2];
             // https://docs.opencv.org/3.1.0/dd/de1/classcv_1_1ml_1_1KNearest.html
             classifier->predict(pixelMat, label);
-            mask.at<uchar>(r, c) = (uchar)label.at<float>(0, 0); // CV_32F results
+            if (label.at<float>(0, 0)) {
+                mask.at<uchar>(r, c) = 1;
+            }
         }
     }
     mask = mask * 255; // 0-1 -> 0-255
