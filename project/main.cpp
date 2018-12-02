@@ -1,8 +1,4 @@
-#include <iostream>
-#include <opencv2/opencv.hpp>
-
-using namespace std;
-using namespace cv;
+#include "notes.h"
 
 int main(int argc, const char** argv) {
     CommandLineParser parser(argc, argv,
@@ -48,4 +44,8 @@ int main(int argc, const char** argv) {
     // Wait until the user decides to exit the program.
     waitKey(0);
     return 0;
+}
+
+Mat findStaffLines(Mat input) {
+
 }
