@@ -1,5 +1,5 @@
-#ifndef SESSIE_5_3_STRAWBERRY_H
-#define SESSIE_5_3_STRAWBERRY_H
+#ifndef SESSIE_5_4_STRAWBERRY_H
+#define SESSIE_5_4_STRAWBERRY_H
 
 #include <iostream>
 #include <opencv2/opencv.hpp>
@@ -22,5 +22,6 @@ void descriptor(Mat img, vector<Point2d> foregroundPoints, vector<Point2d> backg
 void KNN(Mat trainingsData, Mat labels);
 void NaiveBayes(Mat trainingsData, Mat labels);
 void SVM(Mat trainingsData, Mat labels);
+void showResult(Ptr<ml::StatModel> classifier);
 
-#endif //SESSIE_5_3_STRAWBERRY_H
+#endif //SESSIE_5_4_STRAWBERRY_H
