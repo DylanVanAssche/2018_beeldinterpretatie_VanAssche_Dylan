@@ -2,9 +2,15 @@
 
 int main(int argc, const char** argv) {
     CommandLineParser parser(argc, argv,
-                             "{ help h usage ? | | Shows this message.}"
-                             "{ notes n        | | Loads an image of a music notes sheet <REQUIRED> }"
-                             "{ symbols s      | | Loads an image of a music notes symbol <REQUIRED> }"
+                             "{ help h usage ?                | | Shows this message.                                     }"
+                             "{ sheet s                       | | Loads an image of a music notes sheet <REQUIRED>        }"
+                             "{ full-note full                | | Loads an image of a full note symbol <REQUIRED>         }"
+                             "{ half-note half                | | Loads an image of a half note symbol <REQUIRED>         }"
+                             "{ quarter-note quarter          | | Loads an image of a quarter note symbol <REQUIRED>      }"
+                             "{ eighth-note eighth            | | Loads an image of a eighth note symbol <REQUIRED>       }"
+                             "{ sixteenth-note sixteenth      | | Loads an image of a sixteenth note symbol <REQUIRED>    }"
+                             "{ double-half-note double-half  | | Loads an image of a double-half note symbol <REQUIRED>  }"
+                             "{ triple-half-note double-half  | | Loads an image of a triple-half note symbol <REQUIRED>  }"
     );
 
     // Help printing
@@ -22,29 +28,29 @@ int main(int argc, const char** argv) {
     }
 
     // Required arguments supplied?
-    string notes(parser.get<string>("notes"));
-    string symbol(parser.get<string>("symbols"));
-    if(notes.empty() || symbol.empty())
+    string sheet(parser.get<string>("sheet"));
+    string halfNote(parser.get<string>("half-note"));
+    if(sheet.empty() || halfNote.empty())
     {
         cerr << "Please supply your images using command line arguments: --grey=greyImage.png and --color=colorImage.png" << endl;
         return -1;
     }
 
     // Try to load images
-    Mat notesImg;
-    Mat symbolImg;
-    notesImg = imread(notes, IMREAD_GRAYSCALE);
-    symbolImg = imread(symbol, IMREAD_GRAYSCALE);
+    Mat sheetImg;
+    Mat halfNoteImg;
+    sheetImg = imread(sheet, IMREAD_GRAYSCALE);
+    halfNoteImg = imread(halfNote, IMREAD_GRAYSCALE);
 
-    if(notesImg.empty() || symbolImg.empty()) {
+    if(sheetImg.empty() || halfNoteImg.empty()) {
         cerr << "Loading images failed, please verify the paths to the images." << endl;
         return -1;
     }
 
     // Displays the images in a window
     namedWindow("Notes image", WINDOW_AUTOSIZE);
-    imshow("Notes image", notesImg);
-    imshow("Symbol image", symbolImg);
+    imshow("Notes image", sheetImg);
+    imshow("Symbol image", halfNoteImg);
 
 
     //NoteSheet resultsImg = splitStaffLinesAndNotes(notesImg);
@@ -56,11 +62,37 @@ int main(int argc, const char** argv) {
     symbols.push_back(symbolImg);
     detectNotes(notesImg, symbols);*/
 
-    getHistogram(notesImg);
-    getHistogram(symbolImg);
+    Mat sheetImgCleaned = clean(sheetImg);
+
+    Mat histSheet = getHistogram(sheetImgCleaned);
+    Mat histNote = getHistogram(halfNoteImg);
+    Mat histSheet32F;
+    Mat histNote32F;
+    histSheet.convertTo(histSheet32F, CV_32F);
+    histNote.convertTo(histNote32F, CV_32F);
+    //double corr = compareHist(histSheet32F, histNote32F, CV_COMP_CORREL);
+    int step = histNote.cols;
+    for(int c = step/2.0; c < histSheet.cols - 3.0*step/2.0; c = c + step) {
+        //Rect window(c, 0, histSheet.rows-1, histSheet.cols - step/2);
+        Rect window(
+                Point((int)(c - step/2.0), 0),
+                Point((int)(c + 3.0*step/2.0), histSheet.rows)
+                );
+        //Mat roi = histSheet(window);
+        Mat clone = histSheet.clone();
+        rectangle(clone, window, Scalar(255,255,255));
+        imshow("window", clone);
+        waitKey(0);
+    }
+    //cout << "Correlation: " << corr << endl;
 
     // Wait until the user decides to exit the program.
     return 0;
+}
+
+// TODO Split code later
+Mat clean(Mat input) {
+    return input;
 }
 
 Mat getHistogram(Mat input) {
@@ -69,17 +101,27 @@ Mat getHistogram(Mat input) {
     Mat hist = Mat::zeros(input.rows, input.cols, CV_8UC1);
 
     // Remove noise using an opening operation
-    erode(img, img, 0, Point(-1, -1));
-    dilate(img, img, 0, Point(-1, -1));
+    erode(img, img, 0, Point(-1, -1), ERODE_DILATE_ITER);
+    dilate(img, img, 0, Point(-1, -1), ERODE_DILATE_ITER);
 
     // Convert image to it's inverse and threshold the image using adaptive tthresholding.
-    img = ~img;
+    img = ~img; // Music notes are now white
     adaptiveThreshold(img, img, THRESHOLD_MAX, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, THRESHOLD_BLOCK_SIZE, THRESHOLD_C);
     imshow("Histogram input", img);
 
+    // Specify size on vertical axis
+    int verticalsize = img.rows / 30;
+
+    // Create structure element for extracting vertical lines through morphology operations
+    Mat verticalStructure = getStructuringElement(MORPH_RECT, Size( 1,verticalsize));
+
+    // Apply morphology operations
+    erode(img, img, verticalStructure, Point(-1, -1));
+    dilate(img, img, verticalStructure, Point(-1, -1));
+    imshow("Remove stafflines", img);
     /*
      * Calculate histogram (number of pixels in each row), idea from Ann Philips lab.
-     * TODO calcHist() can't be used since it calculates the distribution of pixels instead of the number of pixels 0/1, I can't get it to work? ASKING STEVEN PUTTEMANS
+     * TODO calcHist() can't be used since it calculates the distribution of pixels instead of the number of pixels 0/1, I can't get it to work? ASK STEVEN PUTTEMANS
      */
     vector<int> numberOfPixels;
     int max = 0;
@@ -93,20 +135,38 @@ Mat getHistogram(Mat input) {
             max = sum;
         }
     }
-
-    // Display calculated histogram
+    // Draw calculated histogram
     for(int j=0; j < numberOfPixels.size(); j++) {
-        int normalize = hist.rows * (numberOfPixels.at(j)/((double)max));
+        int normalize = hist.rows * ((numberOfPixels.at(j))/((double)max));
         cout << normalize << ",";
-        // Mind the gap/order: https://stackoverflow.com/questions/25642532/opencv-pointx-y-represent-column-row-or-row-column
-        line(hist, Point(j, 0), Point(j, normalize), Scalar(255,0,0));
+        // Mind the order of X/Y and ROW/COLUMN: https://stackoverflow.com/questions/25642532/opencv-pointx-y-represent-column-row-or-row-column
+        line(hist, Point(j, normalize), Point(j, 0), Scalar(255,255,255));
     }
+
     cout << endl;
 
     imshow("Result", hist);
+
+    vector<vector<Point> > contours;
+    vector<Vec4i> hierarchy;
+    RNG rng(123456789);
+    findContours( img, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0) );
+    Mat drawing = Mat::zeros( img.size(), CV_8UC3 );
+    for( size_t i = 0; i< contours.size(); i++ )
+    {
+        Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+        drawContours( drawing, contours, (int)i, color, 2, 8, hierarchy, 0, Point() );
+        Rect box = boundingRect(contours[i]);
+        rectangle(drawing, box, color);
+    }
+
+    // TODO detect extension of a note by finding the center of the contour using moments and calculate the distance between them
+    namedWindow( "Contours", WINDOW_AUTOSIZE );
+    imshow( "Contours", drawing );
+
     waitKey(0);
 
-    return Mat();
+    return hist;
 }
 
 /*void detectNotes(Mat noteImg, vector<Mat> symbols) {

@@ -8,6 +8,7 @@
 #define THRESHOLD_MAX 255
 #define THRESHOLD_BLOCK_SIZE 25
 #define THRESHOLD_C -2
+#define ERODE_DILATE_ITER 5
 #define HORIZONTAL_DIVIDER 15
 #define VERTICAL_DIVIDER 75
 #define HORIZONTAL_HEIGHT 1
@@ -24,5 +25,6 @@ struct NoteSheet {
 NoteSheet splitStaffLinesAndNotes(Mat input);
 void detectNotes(Mat noteImg, vector<Mat> symbols);
 Mat getHistogram(Mat input);
+Mat clean(Mat input);
 
 #endif //NOTES_H
