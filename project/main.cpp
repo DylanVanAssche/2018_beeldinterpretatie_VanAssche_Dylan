@@ -171,30 +171,37 @@ Mat getHistogram(Mat input) {
         Point point2 = Point(box.x + box.width, box.y + box.height);
         Point point3 = Point(box.x, box.y + box.height);
 
+        // Split bounding box in 2 parts to see where the blob of the note can be found.
         Rect upperBox = Rect(point0, Point(box.x + box.width, box.y + box.height/2));
         Rect lowerBox = Rect(Point(box.x, box.y + box.height/2), Point(box.x + box.width, box.y + box.height));
 
+        // RECT.contains() provides an easy way to check if a Point is laying inside that rectangle
+        double dist = -1.0;
         if(lowerBox.contains(p)) {
-            cout << "Onderkant meten" << endl;
+            cout << "Centroid in lower part of the bounding box" << endl;
             circle( drawing, point2, 5, Scalar( 0, 0, 255) );
-            line(drawing, point2, Point(point2.x, point2.y + drawing.rows), Scalar(255, 255, 255));
+            line(drawing, point2, Point(point2.x, drawing.rows), Scalar(255, 255, 255));
+            Point rectPoint = Point(box.x + m.m10/m.m00, drawing.rows);
+            dist = norm(p - rectPoint);
         }
         else if(upperBox.contains(p)) {
-            cout << "Bovenkant meten" << endl;
+            cout << "Centroid in upper part of the bounding box" << endl;
             circle( drawing, point0, 5, Scalar( 0, 0, 255) );
-            line(drawing, point0, Point(point0.x, point0.y + drawing.rows), Scalar(255, 255, 255));
+            line(drawing, point0, Point(point0.x, drawing.rows), Scalar(255, 255, 255));
+            Point rectPoint = Point(box.x + m.m10/m.m00, drawing.rows);
+            dist = norm(p - rectPoint);
         }
         else {
-            cout << "Geen idee" << endl;
+            cerr << "Centroid of the note lays outside the bounding box, this may not happen!" << endl;
+            continue;
         }
-        cout << "Center: " << p << endl;
+        cout << "Center: " << p << " distance:" << dist << endl;
         circle(drawing, p, 5, Scalar(255,255,255), -1);
         rectangle(drawing, box, color);
         rectangle(drawing, upperBox, Scalar(255,0,0));
         rectangle(drawing, lowerBox, Scalar(0,0,255));
     }
 
-    // TODO detect extension of a note by finding the center of the contour using moments and calculate the distance between them
     namedWindow( "Contours", WINDOW_AUTOSIZE );
     imshow( "Contours", drawing );
 
