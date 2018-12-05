@@ -67,3 +67,8 @@ script:
         - cmake CMakeLists.txt
         - make
         - cd ../..
+        # Build project
+        - cd project
+        - cmake CMakeLists.txt
+        - make
+        - cd ..
