@@ -150,14 +150,48 @@ Mat getHistogram(Mat input) {
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
     RNG rng(123456789);
-    findContours( img, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0) );
+    findContours(img, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0));
+    // find moments of the image
+
+
     Mat drawing = Mat::zeros( img.size(), CV_8UC3 );
     for( size_t i = 0; i< contours.size(); i++ )
     {
         Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
         drawContours( drawing, contours, (int)i, color, 2, 8, hierarchy, 0, Point() );
         Rect box = boundingRect(contours[i]);
+        //Rect lowerBox = Rect(box.x, box.y + box.height/2, box.y + box.width / 2, box.x + box.height);
+        Mat ROI = img(box);
+        Moments m = moments(ROI,true);
+        Point p(m.m10/m.m00 + box.x, m.m01/m.m00 + box.y);
+        Point centerRectangle(box.x + box.height/2, box.y + box.width/2);
+
+        Point point0 = Point(box.x, box.y);
+        Point point1 = Point(box.x + box.width, box.y);
+        Point point2 = Point(box.x + box.width, box.y + box.height);
+        Point point3 = Point(box.x, box.y + box.height);
+
+        Rect upperBox = Rect(point0, Point(box.x + box.width, box.y + box.height/2));
+        Rect lowerBox = Rect(Point(box.x, box.y + box.height/2), Point(box.x + box.width, box.y + box.height));
+
+        if(lowerBox.contains(p)) {
+            cout << "Onderkant meten" << endl;
+            circle( drawing, point2, 5, Scalar( 0, 0, 255) );
+            line(drawing, point2, Point(point2.x, point2.y + drawing.rows), Scalar(255, 255, 255));
+        }
+        else if(upperBox.contains(p)) {
+            cout << "Bovenkant meten" << endl;
+            circle( drawing, point0, 5, Scalar( 0, 0, 255) );
+            line(drawing, point0, Point(point0.x, point0.y + drawing.rows), Scalar(255, 255, 255));
+        }
+        else {
+            cout << "Geen idee" << endl;
+        }
+        cout << "Center: " << p << endl;
+        circle(drawing, p, 5, Scalar(255,255,255), -1);
         rectangle(drawing, box, color);
+        rectangle(drawing, upperBox, Scalar(255,0,0));
+        rectangle(drawing, lowerBox, Scalar(0,0,255));
     }
 
     // TODO detect extension of a note by finding the center of the contour using moments and calculate the distance between them
