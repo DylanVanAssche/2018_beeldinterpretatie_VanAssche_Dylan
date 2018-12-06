@@ -1,3 +1,10 @@
+/*
+ * Labo beeldinterpretatie 2018: project
+ *
+ * ---> PRELIMINARY MUSIC NOTES RECOGNITION <---
+ *
+ * @author Dylan Van Assche
+ */
 #include "notes.h"
 
 int main(int argc, const char** argv) {
@@ -160,6 +167,14 @@ Mat getHorizontalHistogram(Mat input) {
     return horizontalHistogram;
 }
 
+/*
+ * Plots a histogram on an image with size (rows, cols).
+ *
+ * @param Mat histogram
+ * @param int rows
+ * @param int cols
+ * @author Dylan Van Assche
+ */
 void drawHistogram(Mat histogram, int rows, int cols) {
     Mat drawing = Mat::zeros(rows, cols, CV_8UC1);
     double maxHistogram = 0;
@@ -268,6 +283,7 @@ NoteSheet splitStaffLinesAndNotes(Mat input) {
  *
  * @param Mat input
  * @return ContoursData data
+ * @author Dylan Van Assche
  */
 ContoursData calculateContours(Mat input) {
     Mat img = input.clone();
@@ -321,6 +337,7 @@ ContoursData calculateContours(Mat input) {
  * @param ContoursData data
  * @param int rows
  * @param int cols
+ * @author Dylan Van Assche
  */
 void drawContoursWithOrientation(ContoursData data, int rows, int cols) {
     RNG rng(RNG_INIT);
@@ -353,6 +370,7 @@ void drawContoursWithOrientation(ContoursData data, int rows, int cols) {
  * @param double frequency
  * @param double length
  * @returns vector<short> waveForm
+ * @author Dylan Van Assche
  */
 vector<short> generateWaveform(double frequency = NOTE_A, double length = NUM_SAMPLES) {
     vector<short> waveform;
