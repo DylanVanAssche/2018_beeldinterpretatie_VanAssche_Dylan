@@ -86,26 +86,60 @@ int main(int argc, const char** argv) {
     Mat sheetImgCleaned = clean(sheetImg);
 
     Mat histSheet = getHistogram(sheetImgCleaned);
+    Mat sheetDrawing, noteDrawing;
+
+    double maxHistogram;
+    minMaxIdx(histSheet, NULL, &maxHistogram);
+
+    // Draw calculated horizontal histogram
+    for(int j=0; j < histSheet.cols; j++) {
+        cerr << histSheet.at<int>(0, j) << ", ";
+        int normalize = sheetDrawing.rows * ((histSheet.at<int>(0, j))/maxHistogram);
+        // Mind the order of X/Y and ROW/COLUMN: https://stackoverflow.com/questions/25642532/opencv-pointx-y-represent-column-row-or-row-column
+        line(sheetDrawing, Point(j, normalize), Point(j, 0), Scalar(255,255,255));
+    }
+
+    waitKey(0);
     Mat histNote = getHistogram(halfNoteImg);
-    Mat histSheet32F;
-    Mat histNote32F;
-    histSheet.convertTo(histSheet32F, CV_32F);
-    histNote.convertTo(histNote32F, CV_32F);
-    //double corr = compareHist(histSheet32F, histNote32F, CV_COMP_CORREL);
-    int step = histNote.cols;
+
+    minMaxIdx(histNote, NULL, &maxHistogram);
+
+    // Draw calculated horizontal histogram
+    for(int j=0; j < histNote.cols; j++) {
+        cerr << histNote.at<int>(0, j) << ", ";
+        int normalize = noteDrawing.rows * ((histNote.at<int>(0, j))/maxHistogram);
+        // Mind the order of X/Y and ROW/COLUMN: https://stackoverflow.com/questions/25642532/opencv-pointx-y-represent-column-row-or-row-column
+        line(noteDrawing, Point(j, normalize), Point(j, 0), Scalar(255,255,255));
+    }
+    waitKey(0);
+
+    int step = histNote.cols/2;
     for(int c = step/2.0; c < histSheet.cols - 3.0*step/2.0; c = c + step) {
         //Rect window(c, 0, histSheet.rows-1, histSheet.cols - step/2);
         Rect window(
                 Point((int)(c - step/2.0), 0),
                 Point((int)(c + 3.0*step/2.0), histSheet.rows)
                 );
-        //Mat roi = histSheet(window);
-        Mat clone = histSheet.clone();
+        Mat clone = sheetDrawing.clone();
+
         rectangle(clone, window, Scalar(255,255,255));
+
         imshow("window", clone);
+        Mat ROI = Mat(histSheet, window);
+        ROI.convertTo(ROI, CV_32F);
+        histNote.convertTo(histNote, CV_32F);
+        cerr << "Size ROI: " << ROI.size << endl;
+        cerr << "Size note: " << histNote.size << endl;
+        cerr << "ROI type: " << ROI.type() << endl;
+        cerr << "Note type: " << histNote.type() << endl;
+        cerr << "ROI depth: " << ROI.depth() << endl;
+        cerr << "Note depth" << histNote.depth() << endl;
+        cerr << "CV_32F=" << CV_32F << endl;
+        double corr = compareHist(ROI, histNote, CV_COMP_CORREL);
+        cout << "Correlation: " << corr << endl;
         waitKey(0);
     }
-    //cout << "Correlation: " << corr << endl;
+
 
     // Wait until the user decides to exit the program.
     return 0;
@@ -157,7 +191,7 @@ Mat getHistogram(Mat input) {
     double maxHistogram;
     minMaxIdx(horizontalHistogram, NULL, &maxHistogram);
 
-    // Draw calculated histogram
+    // Draw calculated horizontal histogram
     for(int j=0; j < horizontalHistogram.cols; j++) {
         cerr << horizontalHistogram.at<int>(0, j) << ", ";
         int normalize = hist.rows * ((horizontalHistogram.at<int>(0, j))/maxHistogram);
@@ -167,8 +201,7 @@ Mat getHistogram(Mat input) {
 
     imshow("Result", hist);
 
-    waitKey(0);
-
+    // Find contours
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
     RNG rng(123456789);
@@ -226,10 +259,7 @@ Mat getHistogram(Mat input) {
 
     namedWindow("Contours", WINDOW_AUTOSIZE);
     imshow("Contours", drawing);
-
-    waitKey(0);
-
-    return hist;
+    return horizontalHistogram;
 }
 
 /*
