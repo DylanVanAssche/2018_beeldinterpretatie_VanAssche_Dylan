@@ -10,7 +10,7 @@ extern "C" {
     #include <stdio.h>
     #include <math.h>
     #include <stdlib.h>
-    #include "wavfile.h"
+    #include "lib/wavfile.h"
 }
 
 #define THRESHOLD_MAX 255

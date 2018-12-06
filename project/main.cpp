@@ -98,8 +98,8 @@ int main(int argc, const char** argv) {
     // Find the distances between the staff lines
     vector<int> distances = getStaffLineDistances(noteSheet.staffLines);
 
-    for(int &dist : distances) {
-        cout << "staffline:" << dist << endl;
+    for(int d=0; d < distances.size(); ++d) {
+        cout << "staff line position:" << distances.at(d) << endl;
     }
 
 
