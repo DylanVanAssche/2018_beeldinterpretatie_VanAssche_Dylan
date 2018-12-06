@@ -120,19 +120,23 @@ int main(int argc, const char** argv) {
     waitKey(0);
 
     int step = histNote.cols/2;
-    for(int c = step/2.0; c < histSheet.cols - 3.0*step/2.0; c = c + step) {
-        Rect window(
-                Point((int)(c - step/2.0), 0),
-                Point((int)(c + 3.0*step/2.0), histSheet.rows)
-                );
+    vector<double> comparison;
+    double maxComp = 0;
+    for(int c = step/2.0; c < histSheet.cols - 3.0*step/2.0; c++) {
+        Rect
+        window(
+                Point((int) (c - step / 2.0), 0),
+                Point((int) (c + 3.0 * step / 2.0), histSheet.rows)
+        );
 
-        Rect windowVisible(
-                Point((int)(c - step/2.0), 0),
-                Point((int)(c + 3.0*step/2.0), sheetDrawing.rows)
+        Rect
+        windowVisible(
+                Point((int) (c - step / 2.0), 0),
+                Point((int) (c + 3.0 * step / 2.0), sheetDrawing.rows)
         );
         Mat clone = sheetDrawing.clone();
 
-        rectangle(clone, windowVisible, Scalar(255,255,255));
+        rectangle(clone, windowVisible, Scalar(255, 255, 255));
 
         imshow("window", clone);
         Mat ROI = Mat(histSheet, window);
@@ -140,15 +144,28 @@ int main(int argc, const char** argv) {
         histNote.convertTo(histNote, CV_32F);
         cerr << "Size ROI: " << ROI.size << endl;
         cerr << "Size note: " << histNote.size << endl;
-        cerr << "ROI type: " << ROI.type() << endl;
-        cerr << "Note type: " << histNote.type() << endl;
-        cerr << "ROI depth: " << ROI.depth() << endl;
-        cerr << "Note depth" << histNote.depth() << endl;
-        cerr << "CV_32F=" << CV_32F << endl;
-        double corr = compareHist(ROI, histNote, CV_COMP_KL_DIV); // Seems to be the best result
-        cout << "Correlation: " << corr << endl;
-        waitKey(0);
+        double corr = compareHist(ROI, histNote, CV_COMP_BHATTACHARYYA); // Seems to be the best result
+        cout << "Divergent: " << corr << endl;
+        comparison.push_back(corr);
+        if (corr > maxComp) {
+            maxComp = corr;
+        }
+        if (corr > 0.99) {
+            waitKey(0);
+        }
     }
+
+    Mat graph = Mat::zeros(sheetImgCleaned.rows, sheetImgCleaned.cols, CV_8UC1);
+
+    for(int j=1; j < comparison.size(); j++) {
+        int normalize1 = graph.rows * ((comparison.at(j-1))/maxComp);
+        int normalize2 = graph.rows * ((comparison.at(j))/maxComp);
+        // Mind the order of X/Y and ROW/COLUMN: https://stackoverflow.com/questions/25642532/opencv-pointx-y-represent-column-row-or-row-column
+        line(graph, Point(j, normalize1), Point(j, normalize2), Scalar(255,255,255));
+    }
+
+    imshow("graph", graph);
+    waitKey(0);
 
     // Wait until the user decides to exit the program.
     return 0;
