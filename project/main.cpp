@@ -50,76 +50,42 @@ int main(int argc, const char** argv) {
     }
 
     // Displays the images in a window
-    namedWindow("Notes image", WINDOW_AUTOSIZE);
-    imshow("Notes image", sheetImg);
-    imshow("Symbol image", halfNoteImg);
-
-    // Generate sound wave
-    short waveform[NUM_SAMPLES];
-    double frequency = NOTE_A;
-    int length = NUM_SAMPLES;
-
-    for(int i=0; i < length; i++) {
-        double t = (double) i / WAVFILE_SAMPLES_PER_SECOND;
-        waveform[i] = (short) (VOLUME * sin(2 * M_PI * frequency * t));
-    }
-
-    FILE* f = wavfile_open(outputSoundPath.c_str());
-    if(!f)
-    {
-        cerr << "Opening sound file failed!" << endl;
-        return -1;
-    }
-
-    wavfile_write(f, waveform, length);
-    wavfile_close(f);
-
-    //NoteSheet resultsImg = splitStaffLinesAndNotes(notesImg);
-
-    //imshow("Notes lines", resultsImg.staffLines);
-    //imshow("Notes results", resultsImg.notes);
-
-    /*vector<Mat> symbols;
-    symbols.push_back(symbolImg);
-    detectNotes(notesImg, symbols);*/
-
-    Mat sheetImgCleaned = clean(sheetImg);
-
-    Mat histSheet = getHistogram(sheetImgCleaned);
-    Mat sheetDrawing = Mat::zeros(sheetImgCleaned.rows, sheetImgCleaned.cols, CV_8UC1);
-    Mat noteDrawing;
-
-    double maxHistogram;
-    minMaxIdx(histSheet, NULL, &maxHistogram);
-
-    // Draw calculated horizontal histogram
-    cerr << "Hist sheet size:" << histSheet.size() << endl;
-    cerr << "max=" << maxHistogram << endl;
-    for(int j=0; j < histSheet.cols; j++) {
-        int normalize = sheetDrawing.rows * (histSheet.at<int>(0, j)/(float)maxHistogram);
-        cerr << normalize << ", ";
-        // Mind the order of X/Y and ROW/COLUMN: https://stackoverflow.com/questions/25642532/opencv-pointx-y-represent-column-row-or-row-column
-        line(sheetDrawing, Point(j, normalize), Point(j, 0), Scalar(255,255,255));
-    }
-    imshow("sheet drawing", sheetDrawing);
+    cout << "Displaying input" << endl;
+    namedWindow("Sheet image", WINDOW_AUTOSIZE);
+    imshow("Sheet image", sheetImg);
     waitKey(0);
 
-
-    waitKey(0);
-    Mat histNote = getHistogram(halfNoteImg);
-
-    minMaxIdx(histNote, NULL, &maxHistogram);
-
-    // Draw calculated horizontal histogram
-    for(int j=0; j < histNote.cols; j++) {
-        cerr << histNote.at<int>(0, j) << ", ";
-        int normalize = noteDrawing.rows * ((histNote.at<int>(0, j))/maxHistogram);
-        // Mind the order of X/Y and ROW/COLUMN: https://stackoverflow.com/questions/25642532/opencv-pointx-y-represent-column-row-or-row-column
-        line(noteDrawing, Point(j, normalize), Point(j, 0), Scalar(255,255,255));
-    }
+    // Split stafflines from input image
+    NoteSheet noteSheet = splitStaffLinesAndNotes(sheetImg);
+    imshow("Splitting notes", noteSheet.notes);
+    imshow("Splitting stafflines", noteSheet.staffLines);
     waitKey(0);
 
-    int step = histNote.cols/2;
+    // Test sound OK
+    vector<vector<short> > waves;
+    waves.push_back(generateWaveform(NOTE_C, NUM_SAMPLES));
+    waves.push_back(generateWaveform(NOTE_D, NUM_SAMPLES));
+    waves.push_back(generateWaveform(NOTE_E, NUM_SAMPLES));
+    waves.push_back(generateWaveform(NOTE_F, NUM_SAMPLES));
+    waves.push_back(generateWaveform(NOTE_G, NUM_SAMPLES));
+    waves.push_back(generateWaveform(NOTE_A, NUM_SAMPLES));
+    waves.push_back(generateWaveform(NOTE_B, NUM_SAMPLES));
+    saveWaveforms(outputSoundPath, waves);
+
+    // Get horizontal histogram of the sheet and notes
+    Mat histSheet = getHorizontalHistogram(noteSheet.notes);
+    Mat histNote = getHorizontalHistogram(halfNoteImg);
+
+    // Draw the histogram
+    drawHistogram(histSheet, sheetImg.rows, sheetImg.cols);
+    drawHistogram(histNote, halfNoteImg.rows, halfNoteImg.cols);
+
+    // Find contours and display them
+    ContoursData contours = calculateContours(noteSheet.notes);
+    drawContoursWithOrientation(contours, sheetImg.rows, sheetImg.cols);
+
+
+   /* int step = histNote.cols/2;
     vector<double> comparison;
     double maxComp = 0;
     for(int c = step/2.0; c < histSheet.cols - 3.0*step/2.0; c++) {
@@ -153,9 +119,9 @@ int main(int argc, const char** argv) {
         if (corr > 0.99) {
             waitKey(0);
         }
-    }
-
-    Mat graph = Mat::zeros(sheetImgCleaned.rows, sheetImgCleaned.cols, CV_8UC1);
+    }*/
+/*
+    Mat graph = Mat::zeros(noteSheet.notes.rows, noteSheet.notes.cols, CV_8UC1);
 
     for(int j=1; j < comparison.size(); j++) {
         int normalize1 = graph.rows * ((comparison.at(j-1))/maxComp);
@@ -165,148 +131,83 @@ int main(int argc, const char** argv) {
     }
 
     imshow("graph", graph);
-    waitKey(0);
+    waitKey(0);*/
 
     // Wait until the user decides to exit the program.
     return 0;
 }
 
-// TODO Split code later
-Mat clean(Mat input) {
-    return input;
-}
-
-Mat getHistogram(Mat input) {
+/*
+ * Calculate the horizontal histogram using the OpenCV reduce() function.
+ * Internally, the pixels of each column are counted and written to a Mat object.
+ *
+ * @param Mat input
+ * @returns Mat histogram
+ * @author Dylan Van Assche
+ */
+Mat getHorizontalHistogram(Mat input) {
     //https://docs.opencv.org/3.4.4/d6/dc7/group__imgproc__hist.html#ga4b2b5fd75503ff9e6844cc4dcdaed35d
     Mat img = input.clone();
     Mat hist = Mat::zeros(input.rows, input.cols, CV_8UC1);
 
-    // Remove noise using an opening operation
-    erode(img, img, 0, Point(-1, -1), ERODE_DILATE_ITER);
-    dilate(img, img, 0, Point(-1, -1), ERODE_DILATE_ITER);
-
-    // Convert image to it's inverse and threshold the image using adaptive tthresholding.
-    img = ~img; // Music notes are now white
-    adaptiveThreshold(img, img, THRESHOLD_MAX, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, THRESHOLD_BLOCK_SIZE, THRESHOLD_C);
-    imshow("Histogram input", img);
-
-    // Specify size on vertical axis
-    int verticalsize = img.rows / 30;
-
-    // Create structure element for extracting vertical lines through morphology operations
-    Mat verticalStructure = getStructuringElement(MORPH_RECT, Size( 1,verticalsize));
-
-    // Apply morphology operations
-    erode(img, img, verticalStructure, Point(-1, -1));
-    dilate(img, img, verticalStructure, Point(-1, -1));
-    imshow("Remove stafflines", img);
     /*
-     * Calculate horizontal histogram (number of pixels in each row), idea from Ann Philips lab.
+     * Calculate horizontal histogram (number of pixels in each row), idea from Ann Philips'lab.
      * This can be achieved using the reduce() function: https://docs.opencv.org/3.4.4/d2/de8/group__core__array.html#ga4b78072a303f29d9031d56e5638da78e
      * as described here: http://answers.opencv.org/question/17765/analysis-of-the-vertical-and-horizontal-histogram/
      */
     Mat horizontalHistogram;
     reduce(img, horizontalHistogram, 0, CV_REDUCE_SUM, CV_32S);
+    return horizontalHistogram;
+}
+
+void drawHistogram(Mat histogram, int rows, int cols) {
+    Mat drawing = Mat::zeros(rows, cols, CV_8UC1);
+    double maxHistogram = 0;
+    int normalize = 0;
 
     /*
      * Find global maximum to normalize the histogram later.
      * Global minimum is skipped using a NULL pointer as described in the docs.
      * https://docs.opencv.org/3.4.0/d2/de8/group__core__array.html#ga7622c466c628a75d9ed008b42250a73f
      */
-    double maxHistogram;
-    minMaxIdx(horizontalHistogram, NULL, &maxHistogram);
+    minMaxIdx(histogram, NULL, &maxHistogram);
 
     // Draw calculated horizontal histogram
-    for(int j=0; j < horizontalHistogram.cols; j++) {
-        cerr << horizontalHistogram.at<int>(0, j) << ", ";
-        int normalize = hist.rows * ((horizontalHistogram.at<int>(0, j))/maxHistogram);
+    for(int i=0; i < histogram.cols; i++) {
+        normalize = drawing.rows * ((histogram.at<int>(0, i))/maxHistogram);
         // Mind the order of X/Y and ROW/COLUMN: https://stackoverflow.com/questions/25642532/opencv-pointx-y-represent-column-row-or-row-column
-        line(hist, Point(j, normalize), Point(j, 0), Scalar(255,255,255));
+        line(drawing, Point(i, normalize), Point(i, 0), Scalar(255,255,255));
     }
 
-    imshow("Result", hist);
-
-    // Find contours
-    vector<vector<Point> > contours;
-    vector<Vec4i> hierarchy;
-    RNG rng(123456789);
-    findContours(img, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0));
-    // find moments of the image
-
-
-    Mat drawing = Mat::zeros( img.size(), CV_8UC3 );
-    for( size_t i = 0; i< contours.size(); i++ )
-    {
-        Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-        drawContours( drawing, contours, (int)i, color, 2, 8, hierarchy, 0, Point() );
-        Rect box = boundingRect(contours[i]);
-        //Rect lowerBox = Rect(box.x, box.y + box.height/2, box.y + box.width / 2, box.x + box.height);
-        Mat ROI = img(box);
-        Moments m = moments(ROI,true);
-        Point p(m.m10/m.m00 + box.x, m.m01/m.m00 + box.y);
-        Point centerRectangle(box.x + box.height/2, box.y + box.width/2);
-
-        Point point0 = Point(box.x, box.y);
-        Point point1 = Point(box.x + box.width, box.y);
-        Point point2 = Point(box.x + box.width, box.y + box.height);
-        Point point3 = Point(box.x, box.y + box.height);
-
-        // Split bounding box in 2 parts to see where the blob of the note can be found.
-        Rect upperBox = Rect(point0, Point(box.x + box.width, box.y + box.height/2));
-        Rect lowerBox = Rect(Point(box.x, box.y + box.height/2), Point(box.x + box.width, box.y + box.height));
-
-        // RECT.contains() provides an easy way to check if a Point is laying inside that rectangle
-        double dist = -1.0;
-        if(lowerBox.contains(p)) {
-            cout << "Centroid in lower part of the bounding box" << endl;
-            circle( drawing, point2, 5, Scalar( 0, 0, 255) );
-            line(drawing, point2, Point(point2.x, drawing.rows), Scalar(255, 255, 255));
-            Point rectPoint = Point(box.x + m.m10/m.m00, drawing.rows);
-            dist = norm(p - rectPoint);
-        }
-        else if(upperBox.contains(p)) {
-            cout << "Centroid in upper part of the bounding box" << endl;
-            circle( drawing, point0, 5, Scalar( 0, 0, 255) );
-            line(drawing, point0, Point(point0.x, drawing.rows), Scalar(255, 255, 255));
-            Point rectPoint = Point(box.x + m.m10/m.m00, drawing.rows);
-            dist = norm(p - rectPoint);
-        }
-        else {
-            cerr << "Centroid of the note lays outside the bounding box, this may not happen!" << endl;
-            continue;
-        }
-        cout << "Center: " << p << " distance:" << dist << endl;
-        circle(drawing, p, 5, Scalar(255,255,255), -1);
-        rectangle(drawing, box, color);
-        rectangle(drawing, upperBox, Scalar(255,0,0));
-        rectangle(drawing, lowerBox, Scalar(0,0,255));
-    }
-
-    namedWindow("Contours", WINDOW_AUTOSIZE);
-    imshow("Contours", drawing);
-    return horizontalHistogram;
+    // Display histogram and wait for key
+    namedWindow("Histogram", CV_WINDOW_AUTOSIZE);
+    imshow("Histogram", drawing);
+    waitKey(0);
 }
 
 /*
  * By applying erosion (remove noise) and dilation (connect blobs) using a structure element, we can extract the
- * vertical and horizontal lines of the staff lines. We can remove those lines to make it easy for SURF to find local
- * features for each note. When we have those features, we can match them using RANSAC with our predefined notes.
- *
- * This is doable since only 5 different types of notes are in use (1, 1/2, 1/4, 1/8, 1/16). All of these types can have
- * a dot behind them, that means that the note is extended with the 1/2 of it's value (5 different types again).
+ * vertical and horizontal lines of the staff lines.
  *
  * This approach is based on: https://docs.opencv.org/master/dd/dd7/tutorial_morph_lines_detection.html. I tried to use
- * SURF to locate the staff lines but only the first symbol has 1 - 2 local features which is too low. The lines itself
- * don't have any variation which lead to no local features. SURF is ideal to match the types of notes later!
+ * local feature matching techniques like ORB, SURF, ... to locate the staff lines but only the first symbol has 1 - 2
+ * local features which is too low. The lines itself don't have any variation which lead to no local features.
  *
  * Another approach would be counting the number of pixels in a horizontal histogram of the binary image. All peaks in
  * the histogram are staff lines. However, the morfologic approach is a bit more robust in this case due the use of a
  * specific kernel (a difference of a couple of pixels are ignored).
+ *
+ * @param Mat input
+ * @returns NoteSheet sheet
+ * @author Dylan Van Assche
  */
 NoteSheet splitStaffLinesAndNotes(Mat input) {
     Mat binary = input.clone(); // Make sure we don't modify the input
-    Mat img = input.clone();
     NoteSheet result;
+
+    // Remove noise using an opening operation
+    erode(binary, binary, 0, Point(-1, -1), ERODE_DILATE_ITER);
+    dilate(binary, binary, 0, Point(-1, -1), ERODE_DILATE_ITER);
 
     /*
      * Threshold the gray image to a binary image using adaptive threshold (better resistance against different light
@@ -323,7 +224,7 @@ NoteSheet splitStaffLinesAndNotes(Mat input) {
     binary = ~binary; // Invert image
     adaptiveThreshold(binary, binary, THRESHOLD_MAX, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, THRESHOLD_BLOCK_SIZE, THRESHOLD_C);
 
-    // Copy image for horizontal and vertical lines extraction
+    // Clone binary image for horizontal and vertical lines extraction
     Mat horizontalLines = binary.clone();
     Mat verticalLines = binary.clone();
 
@@ -331,12 +232,12 @@ NoteSheet splitStaffLinesAndNotes(Mat input) {
      * Generate the structure elements for these lines.
      * Generally, we use a structure element that has the same form and size as the stuff we want to find.
      * Horizontal lines:
-     *  - length = #cols/15 pixels -> only horizontal lines
+     *  - length = #cols/30 pixels
      *  - height = 1 pixel
      *
      * Vertical lines:
      *  - length = 1 pixel
-     *  - height = #rows/25 pixels -> detect the bullets of the notes too
+     *  - height = #rows/30 pixels
      *
      *  https://docs.opencv.org/master/d4/d86/group__imgproc__filter.html#gaeb1e0c1033e3f6b891a25d0511362aeb
      */
@@ -350,16 +251,145 @@ NoteSheet splitStaffLinesAndNotes(Mat input) {
     // Apply morphology operations on both, anchor = element center (Point(-1, -1))
     erode(horizontalLines, horizontalLines, horizontalStructure, Point(-1, -1));
     dilate(horizontalLines, horizontalLines, horizontalStructure, Point(-1, -1));
-    Mat vertical;
-    binary.copyTo(vertical, ~horizontalLines);
-    imshow("test", vertical);
-    waitKey(0);
-    //erode(verticalLines, verticalLines, verticalStructure, Point(-1, -1));
-    //dilate(verticalLines, verticalLines, verticalStructure, Point(-1, -1));
+    erode(verticalLines, verticalLines, verticalStructure, Point(-1, -1));
+    dilate(verticalLines, verticalLines, verticalStructure, Point(-1, -1));
 
     // Push the results into a NoteSheet struct
     result.staffLines = horizontalLines;
     result.notes = verticalLines;
 
     return result;
+}
+
+/*
+ * Calculates the contours of the input image. Afterwards, it finds the orientation of the notes in the image by using
+ * the centroid of the image. Thanks to the blob on each note, the centroid will move towards the blob. This way we can
+ * find the orientation of the note in an easy way.
+ *
+ * @param Mat input
+ * @return ContoursData data
+ */
+ContoursData calculateContours(Mat input) {
+    Mat img = input.clone();
+    vector<vector<Point> > contours;
+    vector<Vec4i> hierarchy;
+    vector<Point> orientation;
+    RNG rng(RNG_INIT);
+
+    // Find contours
+    findContours(img, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0));
+
+    for(int i=0; i < contours.size(); ++i)
+    {
+        // Get the bounding box of the current contour
+        Rect box = boundingRect(contours[i]);
+
+        // Find the centroid of the image by using OpenCV Moments in the ROI (=bouding box)
+        Mat ROI = img(box);
+        Moments m = moments(ROI,true);
+        Point centroid(m.m10/m.m00 + box.x, m.m01/m.m00 + box.y);
+
+        // Split bounding box in 2 parts to see where the blob of the note can be found.
+        Rect upperBox = Rect(Point(box.x, box.y), Point(box.x + box.width, box.y + box.height/2));
+        Rect lowerBox = Rect(Point(box.x, box.y + box.height/2), Point(box.x + box.width, box.y + box.height));
+
+        // RECT.contains() provides an easy way to check if a Point is laying inside that rectangle
+        if(lowerBox.contains(centroid)) {
+            orientation.push_back(Point(box.x + box.width, box.y + box.height));
+        }
+        else if(upperBox.contains(centroid)) {
+            orientation.push_back(Point(box.x, box.y));
+        }
+        else {
+            cerr << "Centroid of the note lays outside the bounding box, this may not happen!" << endl;
+            orientation.push_back(Point(-1, -1));
+            continue;
+        }
+    }
+
+    // Combine the extracted data into a ContoursData struct
+    ContoursData data;
+    data.contours = contours;
+    data.hierarchy = hierarchy;
+    data.orientation = orientation;
+    return data;
+}
+
+/*
+ * Draws the contours using a random color generators and displays it.
+ *
+ * @param ContoursData data
+ * @param int rows
+ * @param int cols
+ */
+void drawContoursWithOrientation(ContoursData data, int rows, int cols) {
+    RNG rng(RNG_INIT);
+    Mat drawing = Mat::zeros(rows, cols, CV_8UC3);
+
+    double toneHeight = 0;
+    Point orientationPoint = Point(0, 0);
+    Point bottomPoint = Point(0, 0);
+    for(int i = 0; i < data.contours.size(); ++i) {
+        Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+        drawContours(drawing, data.contours, (int)i, color, 2, 8, data.hierarchy, 0, Point());
+
+        orientationPoint = data.orientation.at(i);
+        bottomPoint = Point(orientationPoint.x, drawing.rows);
+        circle(drawing, orientationPoint, 5, Scalar( 0, 0, 255));
+        line(drawing, orientationPoint, bottomPoint, Scalar(255, 255, 255));
+        toneHeight = norm(orientationPoint - bottomPoint);
+        cout << toneHeight << endl;
+    }
+
+    namedWindow("Contours notes", WINDOW_AUTOSIZE);
+    imshow("Contours notes", drawing);
+    waitKey(0);
+}
+
+/*
+ * Generates a sine wave with a given frequency and length.
+ * The result is a vector of shorts which can be written to a WAV file later.
+ *
+ * @param double frequency
+ * @param double length
+ * @returns vector<short> waveForm
+ */
+vector<short> generateWaveform(double frequency = NOTE_A, double length = NUM_SAMPLES) {
+    vector<short> waveform;
+
+    for(int i=0; i < length; i++) {
+        double t = (double) i / WAVFILE_SAMPLES_PER_SECOND;
+        waveform.push_back((short) (VOLUME * sin(2 * M_PI * frequency * t)));
+    }
+
+    return waveform;
+}
+
+/*
+ * Writes a vector of waveforms to a WAV file using the WAVFile C library.
+ * If the file can't be opened, this function returns and writes an error message to the console.
+ *
+ * @param string outputPath
+ * @param vector< vector<short> > waveforms
+ * @author Dylan Van Assche
+ */
+void saveWaveforms(string outputPath, vector< vector<short> > waveforms) {
+    // Open WAV file
+    FILE* f = wavfile_open(outputPath.c_str());
+    if(!f)
+    {
+        cerr << "Opening sound file failed!" << endl;
+        return;
+    }
+
+    // Write each waveform to the WAV file
+    for(int w=0; w < waveforms.size(); ++w) {
+        // Convert C++ vector to C array (https://stackoverflow.com/questions/1733143/converting-between-c-stdvector-and-c-array-without-copying)
+        short* array = &waveforms.at(w)[0];
+        std::copy(waveforms.at(w).begin(), waveforms.at(w).end(), array);
+        wavfile_write(f, array, (int)waveforms.at(w).size());
+    }
+
+    // Close the WAV file
+    wavfile_close(f);
 }

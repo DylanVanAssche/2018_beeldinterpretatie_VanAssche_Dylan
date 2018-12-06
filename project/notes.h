@@ -17,10 +17,11 @@ extern "C" {
 #define THRESHOLD_BLOCK_SIZE 25
 #define THRESHOLD_C -2
 #define ERODE_DILATE_ITER 5
-#define HORIZONTAL_DIVIDER 15
-#define VERTICAL_DIVIDER 75
+#define HORIZONTAL_DIVIDER 30
+#define VERTICAL_DIVIDER 30
 #define HORIZONTAL_HEIGHT 1
 #define VERTICAL_WIDTH 1
+#define RNG_INIT 12345
 
 // Sound
 #define NUM_SAMPLES (2 * WAVFILE_SAMPLES_PER_SECOND)
@@ -41,9 +42,18 @@ struct NoteSheet {
     Mat staffLines;
 };
 
+struct ContoursData {
+    vector< vector<Point> > contours;
+    vector<Vec4i> hierarchy;
+    vector<Point> orientation;
+};
+
 NoteSheet splitStaffLinesAndNotes(Mat input);
-void detectNotes(Mat noteImg, vector<Mat> symbols);
-Mat getHistogram(Mat input);
-Mat clean(Mat input);
+Mat getHorizontalHistogram(Mat input);
+void drawHistogram(Mat histogram, int rows, int cols);
+ContoursData calculateContours(Mat input);
+void drawContoursWithOrientation(ContoursData data, int rows, int cols);
+vector<short> generateWaveform(double frequency, double length);
+void saveWaveforms(string outputPath, vector< vector<short> > waveforms);
 
 #endif //NOTES_H
