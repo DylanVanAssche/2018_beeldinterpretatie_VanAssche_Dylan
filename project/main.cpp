@@ -88,8 +88,19 @@ int main(int argc, const char** argv) {
     drawHistogram(histNote, halfNoteImg.rows, halfNoteImg.cols);
 
     // Find contours and display them
-    ContoursData contours = calculateContours(noteSheet.notes);
-    drawContoursWithOrientation(contours, sheetImg.rows, sheetImg.cols);
+    ContoursData contoursSheet = getContours(noteSheet.notes);
+    ContoursData contoursNote = getContours(halfNoteImg);
+    drawContoursWithOrientation(contoursSheet, sheetImg.rows, sheetImg.cols);
+    drawContoursWithOrientation(contoursNote, halfNoteImg.rows, halfNoteImg.cols);
+    //double matchValue = matchShapes(contoursSheet.contours, contoursNote.contours, CV_CONTOURS_MATCH_I1, 0);
+    //cout << matchValue << endl;
+
+    // Find the distances between the staff lines
+    vector<int> distances = getStaffLineDistances(noteSheet.staffLines);
+
+    for(int &dist : distances) {
+        cout << "staffline:" << dist << endl;
+    }
 
 
    /* int step = histNote.cols/2;
@@ -188,11 +199,20 @@ void drawHistogram(Mat histogram, int rows, int cols) {
     minMaxIdx(histogram, NULL, &maxHistogram);
 
     // Draw calculated horizontal histogram
-    for(int i=0; i < histogram.cols; i++) {
+    int counter = histogram.cols;
+
+    // Vertical histograms are rotated by 90 degrees
+    if(histogram.cols < histogram.rows) {
+        counter = histogram.rows;
+    }
+
+    for(int i=0; i < counter; i++) {
         normalize = drawing.rows * ((histogram.at<int>(0, i))/maxHistogram);
+        cerr << normalize << ",";
         // Mind the order of X/Y and ROW/COLUMN: https://stackoverflow.com/questions/25642532/opencv-pointx-y-represent-column-row-or-row-column
         line(drawing, Point(i, normalize), Point(i, 0), Scalar(255,255,255));
     }
+    cerr << endl;
 
     // Display histogram and wait for key
     namedWindow("Histogram", CV_WINDOW_AUTOSIZE);
@@ -285,7 +305,7 @@ NoteSheet splitStaffLinesAndNotes(Mat input) {
  * @return ContoursData data
  * @author Dylan Van Assche
  */
-ContoursData calculateContours(Mat input) {
+ContoursData getContours(Mat input) {
     Mat img = input.clone();
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
@@ -361,6 +381,65 @@ void drawContoursWithOrientation(ContoursData data, int rows, int cols) {
     namedWindow("Contours notes", WINDOW_AUTOSIZE);
     imshow("Contours notes", drawing);
     waitKey(0);
+}
+
+/*
+ * First approach: Hough line detector to find the staff lines. However, the detector gets confused with notes that are
+ * connected to each other:
+ *
+ *      ------
+ *      |    |
+ *     *    *
+ *
+ * The rectangle that connects both notes is the evil one here!
+ *
+ * Second approach: Vertical histogram of the staff lines. By counting the pixels in the image we retrieve a maximum when
+ * we encounter a staff line. This approach circumvents these notes we mentioned above since they won't reach the maximum
+ * value like the staff lines.
+ *
+ * @param Mat input
+ * @returns vector<int> distances
+ * @author Dylan Van Assche
+ */
+vector<int> getStaffLineDistances(Mat input) {
+    Mat img = input.clone();
+    vector<int> distances;
+
+    /*
+     * Calculate horizontal histogram (number of pixels in each row), idea from Ann Philips'lab.
+     * This can be achieved using the reduce() function: https://docs.opencv.org/3.4.4/d2/de8/group__core__array.html#ga4b78072a303f29d9031d56e5638da78e
+     * as described here: http://answers.opencv.org/question/17765/analysis-of-the-vertical-and-horizontal-histogram/
+     */
+    Mat verticalHistogram;
+    reduce(img, verticalHistogram, 1, CV_REDUCE_SUM, CV_32S);
+    drawHistogram(verticalHistogram, input.rows, input.rows);
+
+    /*
+     * Finds the local maxima in the histogram.
+     * Thanks to: https://stackoverflow.com/questions/28871043/how-do-i-find-the-maximum-number-in-an-array-using-a-function for the idea.
+     */
+    int previousVal = INT_MIN;
+
+    for (int i=0; i < verticalHistogram.rows; i++) {
+        int currentVal = verticalHistogram.at<int>(i, 0);
+
+        // (still) ascending?
+        if (previousVal < currentVal) {
+            direction = ASCENDING;
+        }
+        // (still) descending?
+        else if (previousVal > currentVal) {
+            // Starts descending? Local maximum retrieved!
+            if (direction != DESCENDING) {
+                distances.push_back(i-1);
+                direction = DESCENDING;
+            }
+        }
+        // Update previous value
+        previousVal = currentVal;
+    }
+
+    return distances;
 }
 
 /*

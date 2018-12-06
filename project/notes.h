@@ -48,11 +48,17 @@ struct ContoursData {
     vector<Point> orientation;
 };
 
+enum {
+    ASCENDING,
+    DESCENDING
+} direction = ASCENDING;
+
 NoteSheet splitStaffLinesAndNotes(Mat input);
 Mat getHorizontalHistogram(Mat input);
 void drawHistogram(Mat histogram, int rows, int cols);
-ContoursData calculateContours(Mat input);
+ContoursData getContours(Mat input);
 void drawContoursWithOrientation(ContoursData data, int rows, int cols);
+vector<int> getStaffLineDistances(Mat input);
 vector<short> generateWaveform(double frequency, double length);
 void saveWaveforms(string outputPath, vector< vector<short> > waveforms);
 
