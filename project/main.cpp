@@ -53,6 +53,27 @@ int main(int argc, const char** argv) {
     imshow("Symbol image", halfNoteImg);
 
 
+    // Generate sound wave
+    short waveform[NUM_SAMPLES];
+    double frequency = NOTE_A;
+    int length = NUM_SAMPLES;
+
+    for(int i=0; i < length; i++) {
+        double t = (double) i / WAVFILE_SAMPLES_PER_SECOND;
+        waveform[i] = (short) (VOLUME * sin(2 * M_PI * frequency * t));
+    }
+
+    // TODO make SOUND_FILE configurable using command line parser
+    FILE* f = wavfile_open(SOUND_FILE);
+    if(!f)
+    {
+        printf("Couldn't open %s for writing: %s", SOUND_FILE, strerror(errno));
+        return -1;
+    }
+
+    wavfile_write(f, waveform, length);
+    wavfile_close(f);
+
     //NoteSheet resultsImg = splitStaffLinesAndNotes(notesImg);
 
     //imshow("Notes lines", resultsImg.staffLines);
