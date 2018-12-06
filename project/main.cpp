@@ -86,18 +86,24 @@ int main(int argc, const char** argv) {
     Mat sheetImgCleaned = clean(sheetImg);
 
     Mat histSheet = getHistogram(sheetImgCleaned);
-    Mat sheetDrawing, noteDrawing;
+    Mat sheetDrawing = Mat::zeros(sheetImgCleaned.rows, sheetImgCleaned.cols, CV_8UC1);
+    Mat noteDrawing;
 
     double maxHistogram;
     minMaxIdx(histSheet, NULL, &maxHistogram);
 
     // Draw calculated horizontal histogram
+    cerr << "Hist sheet size:" << histSheet.size() << endl;
+    cerr << "max=" << maxHistogram << endl;
     for(int j=0; j < histSheet.cols; j++) {
-        cerr << histSheet.at<int>(0, j) << ", ";
-        int normalize = sheetDrawing.rows * ((histSheet.at<int>(0, j))/maxHistogram);
+        int normalize = sheetDrawing.rows * (histSheet.at<int>(0, j)/(float)maxHistogram);
+        cerr << normalize << ", ";
         // Mind the order of X/Y and ROW/COLUMN: https://stackoverflow.com/questions/25642532/opencv-pointx-y-represent-column-row-or-row-column
         line(sheetDrawing, Point(j, normalize), Point(j, 0), Scalar(255,255,255));
     }
+    imshow("sheet drawing", sheetDrawing);
+    waitKey(0);
+
 
     waitKey(0);
     Mat histNote = getHistogram(halfNoteImg);
@@ -115,14 +121,18 @@ int main(int argc, const char** argv) {
 
     int step = histNote.cols/2;
     for(int c = step/2.0; c < histSheet.cols - 3.0*step/2.0; c = c + step) {
-        //Rect window(c, 0, histSheet.rows-1, histSheet.cols - step/2);
         Rect window(
                 Point((int)(c - step/2.0), 0),
                 Point((int)(c + 3.0*step/2.0), histSheet.rows)
                 );
+
+        Rect windowVisible(
+                Point((int)(c - step/2.0), 0),
+                Point((int)(c + 3.0*step/2.0), sheetDrawing.rows)
+        );
         Mat clone = sheetDrawing.clone();
 
-        rectangle(clone, window, Scalar(255,255,255));
+        rectangle(clone, windowVisible, Scalar(255,255,255));
 
         imshow("window", clone);
         Mat ROI = Mat(histSheet, window);
@@ -135,11 +145,10 @@ int main(int argc, const char** argv) {
         cerr << "ROI depth: " << ROI.depth() << endl;
         cerr << "Note depth" << histNote.depth() << endl;
         cerr << "CV_32F=" << CV_32F << endl;
-        double corr = compareHist(ROI, histNote, CV_COMP_CORREL);
+        double corr = compareHist(ROI, histNote, CV_COMP_KL_DIV); // Seems to be the best result
         cout << "Correlation: " << corr << endl;
         waitKey(0);
     }
-
 
     // Wait until the user decides to exit the program.
     return 0;
@@ -178,7 +187,6 @@ Mat getHistogram(Mat input) {
      * Calculate horizontal histogram (number of pixels in each row), idea from Ann Philips lab.
      * This can be achieved using the reduce() function: https://docs.opencv.org/3.4.4/d2/de8/group__core__array.html#ga4b78072a303f29d9031d56e5638da78e
      * as described here: http://answers.opencv.org/question/17765/analysis-of-the-vertical-and-horizontal-histogram/
-     * TODO calcHist() can't be used since it calculates the distribution of pixels instead of the number of pixels 0/1, I can't get it to work? ASK STEVEN PUTTEMANS
      */
     Mat horizontalHistogram;
     reduce(img, horizontalHistogram, 0, CV_REDUCE_SUM, CV_32S);
