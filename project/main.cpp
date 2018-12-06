@@ -4,6 +4,7 @@ int main(int argc, const char** argv) {
     CommandLineParser parser(argc, argv,
                              "{ help h usage ?                | | Shows this message.                                     }"
                              "{ sheet s                       | | Loads an image of a music notes sheet <REQUIRED>        }"
+                             "{ output o                      | | Path to the sound output file <REQUIRED>                }"
                              "{ full-note full                | | Loads an image of a full note symbol <REQUIRED>         }"
                              "{ half-note half                | | Loads an image of a half note symbol <REQUIRED>         }"
                              "{ quarter-note quarter          | | Loads an image of a quarter note symbol <REQUIRED>      }"
@@ -29,10 +30,11 @@ int main(int argc, const char** argv) {
 
     // Required arguments supplied?
     string sheet(parser.get<string>("sheet"));
+    string outputSoundPath(parser.get<string>("output"));
     string halfNote(parser.get<string>("half-note"));
-    if(sheet.empty() || halfNote.empty())
+    if(sheet.empty() || outputSoundPath.empty() || halfNote.empty())
     {
-        cerr << "Please supply your images using command line arguments: --grey=greyImage.png and --color=colorImage.png" << endl;
+        cerr << "Please supply your images using command line arguments: --grey=greyImage.png and --color=colorImage.png" << endl; // TODO
         return -1;
     }
 
@@ -52,7 +54,6 @@ int main(int argc, const char** argv) {
     imshow("Notes image", sheetImg);
     imshow("Symbol image", halfNoteImg);
 
-
     // Generate sound wave
     short waveform[NUM_SAMPLES];
     double frequency = NOTE_A;
@@ -63,11 +64,10 @@ int main(int argc, const char** argv) {
         waveform[i] = (short) (VOLUME * sin(2 * M_PI * frequency * t));
     }
 
-    // TODO make SOUND_FILE configurable using command line parser
-    FILE* f = wavfile_open(SOUND_FILE);
+    FILE* f = wavfile_open(outputSoundPath.c_str());
     if(!f)
     {
-        printf("Couldn't open %s for writing: %s", SOUND_FILE, strerror(errno));
+        cerr << "Opening sound file failed!" << endl;
         return -1;
     }
 
@@ -141,32 +141,33 @@ Mat getHistogram(Mat input) {
     dilate(img, img, verticalStructure, Point(-1, -1));
     imshow("Remove stafflines", img);
     /*
-     * Calculate histogram (number of pixels in each row), idea from Ann Philips lab.
+     * Calculate horizontal histogram (number of pixels in each row), idea from Ann Philips lab.
+     * This can be achieved using the reduce() function: https://docs.opencv.org/3.4.4/d2/de8/group__core__array.html#ga4b78072a303f29d9031d56e5638da78e
+     * as described here: http://answers.opencv.org/question/17765/analysis-of-the-vertical-and-horizontal-histogram/
      * TODO calcHist() can't be used since it calculates the distribution of pixels instead of the number of pixels 0/1, I can't get it to work? ASK STEVEN PUTTEMANS
      */
-    vector<int> numberOfPixels;
-    int max = 0;
-    for(int c = 0; c < img.cols; c++) {
-        int sum = 0;
-        for(int r = 0; r < img.rows; r++) {
-            sum += img.at<uchar>(r, c);
-        }
-        numberOfPixels.push_back(sum);
-        if(sum > max) {
-            max = sum;
-        }
-    }
+    Mat horizontalHistogram;
+    reduce(img, horizontalHistogram, 0, CV_REDUCE_SUM, CV_32S);
+
+    /*
+     * Find global maximum to normalize the histogram later.
+     * Global minimum is skipped using a NULL pointer as described in the docs.
+     * https://docs.opencv.org/3.4.0/d2/de8/group__core__array.html#ga7622c466c628a75d9ed008b42250a73f
+     */
+    double maxHistogram;
+    minMaxIdx(horizontalHistogram, NULL, &maxHistogram);
+
     // Draw calculated histogram
-    for(int j=0; j < numberOfPixels.size(); j++) {
-        int normalize = hist.rows * ((numberOfPixels.at(j))/((double)max));
-        cout << normalize << ",";
+    for(int j=0; j < horizontalHistogram.cols; j++) {
+        cerr << horizontalHistogram.at<int>(0, j) << ", ";
+        int normalize = hist.rows * ((horizontalHistogram.at<int>(0, j))/maxHistogram);
         // Mind the order of X/Y and ROW/COLUMN: https://stackoverflow.com/questions/25642532/opencv-pointx-y-represent-column-row-or-row-column
         line(hist, Point(j, normalize), Point(j, 0), Scalar(255,255,255));
     }
 
-    cout << endl;
-
     imshow("Result", hist);
+
+    waitKey(0);
 
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
@@ -223,40 +224,13 @@ Mat getHistogram(Mat input) {
         rectangle(drawing, lowerBox, Scalar(0,0,255));
     }
 
-    namedWindow( "Contours", WINDOW_AUTOSIZE );
-    imshow( "Contours", drawing );
+    namedWindow("Contours", WINDOW_AUTOSIZE);
+    imshow("Contours", drawing);
 
     waitKey(0);
 
     return hist;
 }
-
-/*void detectNotes(Mat noteImg, vector<Mat> symbols) {
-    Mat img = noteImg.clone();
-    Ptr<Feature2D> detector = BRISK::create(); // SURF is faster than SIFT, NON FREE, fix this later
-    vector<KeyPoint> keypoints;
-    Mat descriptor;
-    detector->detectAndCompute(img, Mat(), keypoints, descriptor);
-    drawKeypoints(img, keypoints, img);
-    imshow("Keypoints ORB", img);
-
-    vector< vector<DMatch> > matches;
-    vector<Mat> descriptorSymbol;
-
-    BFMatcher matcher = BFMatcher(NORM_L2); // Eucledian distance is only compatible with ORB
-    for(int i=0; i < symbols.size(); i++) {
-        vector<KeyPoint> keys;
-        vector<DMatch> match;
-        Mat desc;
-        detector->detectAndCompute(symbols.at(i), Mat(), keys, desc);
-        drawKeypoints(symbols.at(i), keys, symbols.at(i));
-        matcher.match(desc, descriptor, match);
-        Mat result;
-        drawMatches(symbols.at(i), keys, img, keypoints, match, result);
-        imshow("matches", result);
-        waitKey(0);
-    }
-}*/
 
 /*
  * By applying erosion (remove noise) and dilation (connect blobs) using a structure element, we can extract the
@@ -334,55 +308,3 @@ NoteSheet splitStaffLinesAndNotes(Mat input) {
 
     return result;
 }
-
-/*#include "opencv2/objdetect/objdetect.hpp"
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include <iostream>
-
-using namespace std;
-using namespace cv;
-
-int main(int, char**)
-{
-    Mat gray=imread("test.png",0);
-    gray = ~gray;
-    namedWindow( "Gray", 1 );    imshow( "Gray", gray );
-
-    // Initialize parameters
-    int histSize = 256;    // bin size
-    float range[] = { 0, 255 };
-    const float *ranges[] = { range };
-
-    // Calculate histogram
-    MatND hist;
-    calcHist( &gray, 1, 0, Mat(), hist, 1, &histSize, ranges, true, false );
-
-    // Show the calculated histogram in command window
-    double total;
-    total = gray.rows * gray.cols;
-    for( int h = 0; h < histSize; h++ )
-    {
-        float binVal = hist.at<float>(h);
-        cout<<" "<<binVal;
-    }
-
-    // Plot the histogram
-    int hist_w = 512; int hist_h = 400;
-    int bin_w = cvRound( (double) hist_w/histSize );
-
-    Mat histImage( hist_h, hist_w, CV_8UC1, Scalar( 0,0,0) );
-    normalize(hist, hist, 0, histImage.cols, NORM_MINMAX, -1, Mat() );
-
-    for( int i = 1; i < histSize; i++ )
-    {
-        line( histImage, Point( bin_w*(i-1), hist_h - cvRound(hist.at<float>(i-1)) ) ,
-              Point( bin_w*(i), hist_h - cvRound(hist.at<float>(i)) ),
-              Scalar( 255, 0, 0), 2, 8, 0  );
-    }
-
-    namedWindow( "Result", 1 );    imshow( "Result", histImage );
-
-    waitKey(0);
-    return 0;
-}*/

@@ -10,9 +10,6 @@ extern "C" {
     #include <stdio.h>
     #include <math.h>
     #include <stdlib.h>
-    #include <time.h>
-    #include <string.h>
-    #include <errno.h>
     #include "wavfile.h"
 }
 
@@ -26,8 +23,7 @@ extern "C" {
 #define VERTICAL_WIDTH 1
 
 // Sound
-#define SOUND_FILE "sound.wav"
-#define NUM_SAMPLES (WAVFILE_SAMPLES_PER_SECOND*2)
+#define NUM_SAMPLES (2 * WAVFILE_SAMPLES_PER_SECOND)
 #define VOLUME 32000
 #define NOTE_C 261.6
 #define NOTE_D 293.7
