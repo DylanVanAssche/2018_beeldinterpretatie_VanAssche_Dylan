@@ -7,11 +7,8 @@ using namespace cv;
 #define FONT_SIZE 0.8
 #define MIN_WEIGHT 1.0
 #define SCALE 1.5
-#define RADIUS 5
-#define THICKNESS -1 // fill complete
 
-vector<Point> runDetection(Mat frame, HOGDescriptor hog);
-Mat drawTracking(Mat input, vector<Point> tracking);
+void runDetection(Mat frame, HOGDescriptor hog);
 
 int main(int argc, const char** argv) {
     CommandLineParser parser(argc, argv,
@@ -64,11 +61,7 @@ int main(int argc, const char** argv) {
         resize(frame, frame, Size(SCALE*frame.cols, SCALE*frame.rows));
 
         // Detect faces using Viola and Jones boosted cascades
-        vector<Point> currentTracking = runDetection(frame, hog);
-        trackingPoints.insert(trackingPoints.end(), currentTracking.begin(), currentTracking.end());
-
-        // Draw tracking
-        frame = drawTracking(frame, trackingPoints);
+        runDetection(frame, hog);
 
         // Show frame
         imshow("video", frame);
@@ -84,12 +77,11 @@ int main(int argc, const char** argv) {
 }
 
 // Run classifier
-vector<Point> runDetection(Mat frame, HOGDescriptor hog) {
+void runDetection(Mat frame, HOGDescriptor hog) {
     Mat img = frame.clone(); // keep original
 
     vector<Rect> people;
     vector<double> weights;
-    vector<Point> tracking;
 
     // HOG detection
     hog.detectMultiScale(img, people, weights);
@@ -99,7 +91,6 @@ vector<Point> runDetection(Mat frame, HOGDescriptor hog) {
         if(weights.at(i) >= MIN_WEIGHT) {
             Point facesCenter = Point(people.at(i).x + people.at(i).width / 2,
                                       people.at(i).y + people.at(i).height / 2);
-            tracking.push_back(facesCenter);
             circle(img, facesCenter, 5, Scalar(255, 255, 255));
             Rect box = Rect(Point(people.at(i).x, people.at(i).y),
                     Point(people.at(i).x + people.at(i).width, people.at(i).y + people.at(i).height));
@@ -113,17 +104,6 @@ vector<Point> runDetection(Mat frame, HOGDescriptor hog) {
     }
 
     imshow("Pedestrian detector", img);
-    return tracking;
-}
-
-Mat drawTracking(Mat input, vector<Point> tracking) {
-    Mat img = input.clone();
-
-    for(int i=0; i < tracking.size(); ++i) {
-        circle(img, tracking.at(i), RADIUS, Scalar(255, 255, 255), THICKNESS);
-    }
-
-    return img;
 }
 
 // LBP is 4x sneller omdat deze enkel met integers werkt ipv floats. Haar werkt met grijswaarden, LBP enkel Z/W. Helaas is de accuratie hierdoor slechter
