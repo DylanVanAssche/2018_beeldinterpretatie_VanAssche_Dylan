@@ -7,6 +7,7 @@ using namespace cv;
 void runDetection(Mat frame, CascadeClassifier violaJones);
 #define SCALE_FACTOR 1.05
 #define MIN_NEIGHBORS 3
+#define FONT_SIZE 0.8
 
 int main(int argc, const char** argv) {
     CommandLineParser parser(argc, argv,
@@ -92,10 +93,10 @@ void runDetection(Mat frame, CascadeClassifier violaJones) {
         circle(gray, facesCenter, 5, Scalar(255, 255, 255));
         Rect box = Rect(Point(facesBoundingBox.at(i).x , facesBoundingBox.at(i).y), Point(facesBoundingBox.at(i).x + facesBoundingBox.at(i).height , facesBoundingBox.at(i).y + facesBoundingBox.at(i).width));
         rectangle(gray, box, Scalar(255, 255, 255));
-        ostringstream convert;
+        stringstream convert;
         convert << scores.at(i);
         string text = convert.str();
-        putText(gray, text, Point(facesBoundingBox.at(i).x , facesBoundingBox.at(i).y), FONT_HERSHEY_COMPLEX, 0.8, Scalar(255, 255, 255));
+        putText(gray, text, Point(facesBoundingBox.at(i).x , facesBoundingBox.at(i).y), FONT_HERSHEY_COMPLEX, FONT_SIZE, Scalar(255, 255, 255));
     }
 
     imshow("Viola and Jones", gray);
