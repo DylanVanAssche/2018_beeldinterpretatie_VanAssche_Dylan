@@ -12,7 +12,7 @@ int main(int argc, const char** argv) {
     CommandLineParser parser(argc, argv,
                              "{ help h usage ? | | Shows this message.}"
                              "{ video v        | | Loads a video file <REQUIRED> }"
-                             "{ haar h         | | Loads a haar cascade file <REQUIRED> }"
+                             "{ lbp         | | Loads a LBP cascade file <REQUIRED> }"
     );
 
     // Help printing
@@ -31,7 +31,7 @@ int main(int argc, const char** argv) {
 
     // Required arguments supplied?
     string video(parser.get<string>("video"));
-    string haar(parser.get<string>("haar"));
+    string lbp(parser.get<string>("lbp"));
 
     // Try to load video
     VideoCapture cap(video);
@@ -43,8 +43,8 @@ int main(int argc, const char** argv) {
 
     // Try to open the HAAR file
     CascadeClassifier violaJones;
-    if(!violaJones.load(haar)) {
-        cerr << "Can't load HAAR file, supply it with the following argument: --haar=haar.xml" << endl;
+    if(!violaJones.load(lbp)) {
+        cerr << "Can't load LBP cascade file, supply it with the following argument: --lbp=lbp.xml" << endl;
     }
 
 
