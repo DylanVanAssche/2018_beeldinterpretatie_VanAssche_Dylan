@@ -617,11 +617,11 @@ double _convertIndexToNoteFrequency(int index) {
             return NOTE_F;
         case 9:
             return NOTE_E;
-        case 10:
+        case 10: // index++ -> 10 becomes 11
         case 11:
             return NOTE_D;
         default:
-            cerr << "Can't estimate note, frequency is set to 0.0" << endl;
+            cerr << "Can't estimate note frequency, frequency is set to 0.0" << endl;
             return 0.0;
     }
 }
