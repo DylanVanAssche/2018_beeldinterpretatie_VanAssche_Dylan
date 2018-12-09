@@ -15,6 +15,7 @@ extern "C" {
 #define THRESHOLD_MAX 255
 #define THRESHOLD_BLOCK_SIZE 25
 #define THRESHOLD_C -2
+#define TEMPLATE_MATCH_PERCENTAGE 95.0
 #define ERODE_DILATE_ITER 5
 #define HORIZONTAL_DIVIDER 30
 #define VERTICAL_DIVIDER 30
@@ -25,6 +26,7 @@ extern "C" {
 
 // Sound
 #define NUM_SAMPLES (2 * WAVFILE_SAMPLES_PER_SECOND)
+#define NOTE_LENGTH NUM_SAMPLES/16 // Shortest note is 1/16
 #define VOLUME 32000
 #define NOTE_C 261.6
 #define NOTE_D 293.7
@@ -46,6 +48,7 @@ typedef struct ContoursData {
     vector< vector<Point> > contours;
     vector<Vec4i> hierarchy;
     vector<Point> orientation;
+    vector<double> length;
 } ContoursData;
 
 typedef struct StaffLineData {
@@ -69,7 +72,8 @@ void drawHistogram(Mat histogram, int rows, int cols);
 ContoursData getContours(Mat input);
 void drawContoursWithOrientation(ContoursData data, int rows, int cols);
 vector<StaffLineData> getStaffLineDistances(Mat input);
-vector<Note> convertDataToNote(ContoursData data, vector<StaffLineData> staffLineDistances, int rows, int cols);
+double getLengthByTemplateMatching(Mat inputInverted, vector<Mat> templates);
+vector<Note> convertDataToNote(Mat input, vector<Mat> templates, ContoursData data, vector<StaffLineData> staffLineDistances, int rows, int cols);
 double _convertIndexToNoteFrequency(int index);
 vector<short> generateWaveform(double frequency, double length);
 void saveWaveforms(string outputPath, vector< vector<short> > waveforms);

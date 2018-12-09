@@ -7,7 +7,6 @@
  */
 #include "notes.h"
 
-Mat helpImg;
 int main(int argc, const char** argv) {
     CommandLineParser parser(argc, argv,
                              "{ help h usage ?                | | Shows this message.                                     }"
@@ -92,56 +91,57 @@ int main(int argc, const char** argv) {
         cout << "staff line position:" << distances.at(d).position << endl;
     }
 
-    helpImg = noteSheet.staffLines.clone();
-    vector<Note> notes = convertDataToNote(contoursSheet, distances, sheetImg.rows, sheetImg.cols);
+    vector<Mat> templates;
+    templates.push_back(~halfNoteImg);
+    vector<Note> notes = convertDataToNote(noteSheet.notes, templates, contoursSheet, distances, sheetImg.rows, sheetImg.cols);
 
-    Mat result;
-    int cols = sheetImg.cols - halfNoteImg.cols + 1;
-    int rows = sheetImg.rows - halfNoteImg.rows + 1;
-    result.create(rows, cols, CV_32FC1);
+    /*Mat result;
+    double minValue, maxValue;
+    int thresholdValue = 98.0;
 
-    int step = noteSheet.notes.cols/20;
-    for(int c = step/2.0; c < noteSheet.notes.cols - 5*step/2.0; c = c + step) {
-        Rect
-        window(
-                Point((int) (c - step / 2.0), 0),
-                Point((int) (c + 3.0 * step / 2.0), noteSheet.notes.rows)
-        );
+    adaptiveThreshold(halfNoteImg, halfNoteImg, THRESHOLD_MAX, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, THRESHOLD_BLOCK_SIZE, THRESHOLD_C);
 
-        Rect
-        windowVisible(
-                Point((int) (c - step / 2.0), 0),
-                Point((int) (c + 3.0 * step / 2.0), noteSheet.notes.rows)
-        );
-        Mat clone = noteSheet.notes.clone();
+    //rotate(noteSheet.notes, noteSheet.notes, cv::ROTATE_180);
 
-        rectangle(clone, windowVisible, Scalar(255, 255, 255));
+    matchTemplate(noteSheet.notes, ~halfNoteImg, result, CV_TM_SQDIFF);
+    normalize(result, result, 0, 1, NORM_MINMAX, -1, Mat());
 
-        imshow("window", clone);
-        waitKey(0);
+    result = 1 - result; // TM_SQDIFF or TM_SQDIFF_NORMED
 
-        Mat ROI = Mat(noteSheet.notes, window);
+    minMaxLoc(result, &minValue, &maxValue);
 
-        matchTemplate(noteSheet.notes, ~halfNoteImg, result, CV_TM_SQDIFF); // make this configurable
-        cout << result << endl;
-        normalize(result, result, 0, 1, NORM_MINMAX, -1, Mat()); // NCC convolution: borders don't have any information [0, 1]
-        result = 1 - result; // min to max converting since best match TM_SQDIFF is minimum
-        double minVal;
-        double maxVal;
-        Point minLoc;
-        Point maxLoc;
-        minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc, Mat());
-        cout << "maxValue=" << maxVal << endl;
-        rectangle(noteSheet.notes, Point(maxLoc.x, maxLoc.y), Point(maxLoc.x + halfNoteImg.cols, maxLoc.y + halfNoteImg.rows), Scalar::all(255));
+    // Threshold
+    Mat mask = Mat::zeros(Size(noteSheet.notes.cols, noteSheet.notes.rows), CV_32FC1);
+    inRange(result, maxValue * ((double)thresholdValue/100.0), maxValue, mask);
+    mask.convertTo(mask, CV_8UC1);
+
+    // Keep the original input img available
+    Mat copyImg(noteSheet.notes.clone());
+
+    // Use contours to find the contours of all the matches
+    vector<vector<Point> > contours;
+    findContours(mask, contours, CV_RETR_EXTERNAL, CHAIN_APPROX_NONE);
+    for(int i = 0; i < contours.size(); i++)
+    {
+        // Find bounding rectangle
+        vector<Point> hull;
+        convexHull(contours.at(i), hull);
+        Rect rect = boundingRect(hull);
+
+        // Find local result for this rectangle
+        Point loc;
+        minMaxLoc(result(rect), NULL, NULL, NULL, &loc);
+
+        // Draw rectangle on image
+        Point p(loc.x + rect.x, loc.y + rect.y);
+        rectangle(copyImg, p, Point(p.x + halfNoteImg.cols, p.y + halfNoteImg.rows), Scalar(255, 255, 255));
     }
 
-    Mat scaledResult;
-    resize(result, result, Size(noteSheet.notes.cols, noteSheet.notes.rows));
-    cout << "result" << result.size << endl;
-    cout << "img" << noteSheet.notes.size << endl;
-    imshow("Result image", result);
-    imshow("Result image", noteSheet.notes);
-    waitKey(0);
+    // Show everything to the user
+    imshow("Mask", mask);
+    imshow("Template matching", copyImg);
+    imshow("Template matching NCC", result);
+    waitKey(0);*/
 
     // Generate wave
     vector<vector<short> > waves;
@@ -355,13 +355,31 @@ NoteSheet splitStaffLinesAndNotes(Mat input) {
  */
 ContoursData getContours(Mat input) {
     Mat img = input.clone();
+    Mat matchResult;
+    double minValue, maxValue;
+    Point minLoc, maxLoc;
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
     vector<Point> orientation;
     RNG rng(RNG_INIT);
 
+    // Perform template matching on the image (for each template)
+    matchTemplate(img, templ, matchResult, CV_TM_SQDIFF);
+
+    // NCC convolution: borders don't have any information [0, 1]
+    normalize(matchResult, matchResult, 0, 1, NORM_MINMAX, -1, Mat());
+
+    // Convert MIN to MAX since best match TM_SQDIFF is minimum
+    matchResult = 1 - matchResult;
+    minMaxLoc(matchResult, &minValue, &maxValue, &minLoc, &maxLoc, Mat());
+
+    // Create mask for multiple matching using a threshold match percentage
+    Mat mask = Mat::zeros(Size(img.cols, img.rows), CV_32FC1);
+    inRange(matchResult, maxValue * ((double) TEMPLATE_MATCH_PERCENTAGE / 100.0), maxValue, mask);
+    mask.convertTo(mask, CV_8UC1);
+
     // Find contours
-    findContours(img, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0));
+    findContours(mask, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0));
 
     for(int i=0; i < contours.size(); ++i)
     {
@@ -503,6 +521,100 @@ vector<StaffLineData> getStaffLineDistances(Mat input) {
     return distancesFiltered;
 }
 
+double getLengthByTemplateMatching(Mat inputInverted, vector<Mat> templates) {
+    Mat img = inputInverted.clone();
+    Mat templ, matchResult;
+    double length = 0.0;
+    double minValue;
+    double maxValue;
+    Point minLoc;
+    Point maxLoc;
+
+    for(int t=0; t < templates.size(); ++t) {
+        templ = templates.at(t);
+
+        // Perform template matching on the image (for each template)
+        matchTemplate(img, ~templ, matchResult, CV_TM_SQDIFF);
+
+        // NCC convolution: borders don't have any information [0, 1]
+        normalize(matchResult, matchResult, 0, 1, NORM_MINMAX, -1, Mat());
+
+        // Convert MIN to MAX since best match TM_SQDIFF is minimum
+        matchResult = 1 - matchResult;
+        minMaxLoc(matchResult, &minValue, &maxValue, &minLoc, &maxLoc, Mat());
+
+        // Create mask for multiple matching using a threshold match percentage
+        Mat mask = Mat::zeros(Size(img.cols, img.rows), CV_32FC1);
+        inRange(matchResult, maxValue * ((double) TEMPLATE_MATCH_PERCENTAGE / 100.0), maxValue, mask);
+        mask.convertTo(mask, CV_8UC1);
+
+        // Use contours to find the contours of all the matches
+        vector<vector<Point> > contours;
+        findContours(mask, contours, CV_RETR_EXTERNAL, CHAIN_APPROX_NONE);
+
+        for (int i = 0; i < contours.size(); ++i) {
+            // Find bounding rectangle
+            Rect rect = boundingRect(contours.at(i));
+
+            // Find local result for this rectangle
+            Point loc;
+            minMaxLoc(matchResult(rect), NULL, NULL, NULL, &loc);
+
+            // Draw rectangle on image
+            Point p(loc.x + rect.x, loc.y + rect.y);
+            rectangle(img, p, Point(p.x + templ.cols, p.y + templ.rows), Scalar(255, 255, 255));
+        }
+
+        // Show everything to the user
+        imshow("Mask", mask);
+        imshow("Template matching", img);
+        waitKey(0);
+    }
+
+    return length;
+}
+
+bool isMatch(Mat input, Mat templ) {
+    Mat img = input.clone();
+    Mat templateToMatch = templ.clone();
+    Mat matchResult;
+    double minValue;
+    double maxValue;
+    Point minLoc;
+    Point maxLoc;
+
+    // Perform template matching on the image (for each template)
+    matchTemplate(img, templateToMatch, matchResult, CV_TM_SQDIFF);
+
+    // NCC convolution: borders don't have any information [0, 1]
+    normalize(matchResult, matchResult, 0, 1, NORM_MINMAX, -1, Mat());
+
+    // Convert MIN to MAX since best match TM_SQDIFF is minimum
+    matchResult = 1 - matchResult;
+    minMaxLoc(matchResult, &minValue, &maxValue, &minLoc, &maxLoc, Mat());
+
+    // Create mask for multiple matching using a threshold match percentage
+    Mat mask = Mat::zeros(Size(img.cols, img.rows), CV_32FC1);
+    inRange(matchResult, maxValue * ((double) TEMPLATE_MATCH_PERCENTAGE / 100.0), maxValue, mask);
+    mask.convertTo(mask, CV_8UC1);
+
+    // Use contours to find the contours of all the matches
+    vector<vector<Point> > contours;
+    findContours(mask, contours, CV_RETR_EXTERNAL, CHAIN_APPROX_NONE);
+
+    imshow("mask", mask);
+    imshow("ROI", input);
+    imshow("template", templ);
+    waitKey(0);
+
+
+    if(contours.size() > 0) {
+        return true;
+    }
+
+    return false;
+}
+
 /*
  * Combines the contours information and the distances between staff lines to find the frequency of each note.
  *
@@ -511,12 +623,13 @@ vector<StaffLineData> getStaffLineDistances(Mat input) {
  * @returns vector<Note>
  * @author Dylan Van Assche
  */
-vector<Note> convertDataToNote(ContoursData data, vector<StaffLineData> staffLineDistances, int rows, int cols) {
+vector<Note> convertDataToNote(Mat input, vector<Mat> templates, ContoursData data, vector<StaffLineData> staffLineDistances, int rows, int cols) {
     Mat drawing = Mat::zeros(rows, cols, CV_8UC3);
-    helpImg.copyTo(drawing);
+    input.copyTo(drawing);
+    Mat img = input.clone();
     cvtColor(drawing, drawing, CV_GRAY2BGR);
-    double frequency = 0.0;
-    double length = 0.0;
+    double frequency = NOTE_A; // fallback in case detection fails
+    double length = NOTE_LENGTH; // fallback in case detection fails
     Point noteLocation;
     vector<Rect> areas;
     vector<Note> notes;
@@ -600,7 +713,7 @@ vector<Note> convertDataToNote(ContoursData data, vector<StaffLineData> staffLin
     areas.push_back(areaAfter);
     rectangle(drawing, areaAfter, color2);
 
-    // Find for every note, it's frequency by checking it's location
+    // Find for every note the frequency by checking it's location
     for(int i=0; i < data.orientation.size(); ++i) {
         Note note;
         noteLocation = data.orientation.at(i);
@@ -616,9 +729,24 @@ vector<Note> convertDataToNote(ContoursData data, vector<StaffLineData> staffLin
         }
 
         // Find the length of each note
-        note.frequency = frequency;
-        note.length = NUM_SAMPLES; //length; // TODO
+        for(int t=0; t < templates.size(); ++t) {
+            Rect box = boundingRect(data.contours.at(i));
+            box.x = box.x - box.width/2;
+            box.y = box.y - box.height/2;
+            box.height = box.height*2;
+            box.width = box.width*2;
 
+            Mat ROI = img(box);
+            if(isMatch(ROI, templates.at(t))) {
+                length = (t+1) * NOTE_LENGTH;
+                cout << "Found length: " << length << endl;
+                break;
+            }
+        }
+
+        // Merge the retrieved data
+        note.frequency = frequency;
+        note.length = length;
         notes.push_back(note);
     }
 
