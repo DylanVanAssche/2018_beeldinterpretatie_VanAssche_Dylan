@@ -70,7 +70,7 @@ ContoursData getContours(Mat input);
 void drawContoursWithOrientation(ContoursData data, int rows, int cols);
 vector<StaffLineData> getStaffLineDistances(Mat input);
 vector<Note> convertDataToNote(ContoursData data, vector<StaffLineData> staffLineDistances, int rows, int cols);
-double _convertIndexToNote(int index);
+double _convertIndexToNoteFrequency(int index);
 vector<short> generateWaveform(double frequency, double length);
 void saveWaveforms(string outputPath, vector< vector<short> > waveforms);
 

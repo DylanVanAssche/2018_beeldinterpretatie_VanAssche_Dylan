@@ -95,6 +95,54 @@ int main(int argc, const char** argv) {
     helpImg = noteSheet.staffLines.clone();
     vector<Note> notes = convertDataToNote(contoursSheet, distances, sheetImg.rows, sheetImg.cols);
 
+    Mat result;
+    int cols = sheetImg.cols - halfNoteImg.cols + 1;
+    int rows = sheetImg.rows - halfNoteImg.rows + 1;
+    result.create(rows, cols, CV_32FC1);
+
+    int step = noteSheet.notes.cols/20;
+    for(int c = step/2.0; c < noteSheet.notes.cols - 5*step/2.0; c = c + step) {
+        Rect
+        window(
+                Point((int) (c - step / 2.0), 0),
+                Point((int) (c + 3.0 * step / 2.0), noteSheet.notes.rows)
+        );
+
+        Rect
+        windowVisible(
+                Point((int) (c - step / 2.0), 0),
+                Point((int) (c + 3.0 * step / 2.0), noteSheet.notes.rows)
+        );
+        Mat clone = noteSheet.notes.clone();
+
+        rectangle(clone, windowVisible, Scalar(255, 255, 255));
+
+        imshow("window", clone);
+        waitKey(0);
+
+        Mat ROI = Mat(noteSheet.notes, window);
+
+        matchTemplate(noteSheet.notes, ~halfNoteImg, result, CV_TM_SQDIFF); // make this configurable
+        cout << result << endl;
+        normalize(result, result, 0, 1, NORM_MINMAX, -1, Mat()); // NCC convolution: borders don't have any information [0, 1]
+        result = 1 - result; // min to max converting since best match TM_SQDIFF is minimum
+        double minVal;
+        double maxVal;
+        Point minLoc;
+        Point maxLoc;
+        minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc, Mat());
+        cout << "maxValue=" << maxVal << endl;
+        rectangle(noteSheet.notes, Point(maxLoc.x, maxLoc.y), Point(maxLoc.x + halfNoteImg.cols, maxLoc.y + halfNoteImg.rows), Scalar::all(255));
+    }
+
+    Mat scaledResult;
+    resize(result, result, Size(noteSheet.notes.cols, noteSheet.notes.rows));
+    cout << "result" << result.size << endl;
+    cout << "img" << noteSheet.notes.size << endl;
+    imshow("Result image", result);
+    imshow("Result image", noteSheet.notes);
+    waitKey(0);
+
     // Generate wave
     vector<vector<short> > waves;
     for(int n=0; n < notes.size(); ++n) {
@@ -561,7 +609,7 @@ vector<Note> convertDataToNote(ContoursData data, vector<StaffLineData> staffLin
         // Check between/on which staff lines the note is sitting
         for(int a=0; a < areas.size(); ++a) {
             if(areas.at(a).contains(noteLocation)) {
-                frequency = _convertIndexToNote(a);
+                frequency = _convertIndexToNoteFrequency(a);
                 cout << "Note frequency: " << frequency << endl;
                 break;
             }
@@ -572,10 +620,10 @@ vector<Note> convertDataToNote(ContoursData data, vector<StaffLineData> staffLin
         note.length = NUM_SAMPLES; //length; // TODO
 
         notes.push_back(note);
-        circle(drawing, noteLocation, 10, Scalar(255, 0, 0), 5);
-        imshow("Area test", drawing);
-        waitKey(0);
     }
+
+    imshow("Matching notes with staff lines", drawing);
+    waitKey(0);
 
     return notes;
 }
