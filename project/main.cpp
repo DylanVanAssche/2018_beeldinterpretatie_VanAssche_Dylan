@@ -318,7 +318,7 @@ ContoursData getContours(Mat input) {
     for(int i=0; i < contours.size(); ++i)
     {
         // Get the bounding box of the current contour
-        Rect box = boundingRect(contours[i]);
+        Rect box = boundingRect(contours.at(i));
 
         // Find the centroid of the image by using OpenCV Moments in the ROI (=bouding box)
         Mat ROI = img(box);
@@ -457,9 +457,11 @@ vector<StaffLineData> getStaffLineDistances(Mat input) {
 
 /*
  * Combines the contours information and the distances between staff lines to find the frequency of each note.
+ *
  * @param ContoursData data
  * @param vector<int> staffLineDistances
  * @returns vector<Note>
+ * @author Dylan Van Assche
  */
 vector<Note> convertDataToNote(ContoursData data, vector<StaffLineData> staffLineDistances, int rows, int cols) {
     Mat drawing = Mat::zeros(rows, cols, CV_8UC3);
@@ -496,6 +498,7 @@ vector<Note> convertDataToNote(ContoursData data, vector<StaffLineData> staffLin
      * |
      *
      * /!\ To keep this proof-of-concept simple, we will focus on the notes within the reach of the staff lines.
+     *      Every note before or after the staff lines are ignored and reduced to NOTE_D or NOTE_G.
      *
      */
 
@@ -577,12 +580,18 @@ vector<Note> convertDataToNote(ContoursData data, vector<StaffLineData> staffLin
     return notes;
 }
 
-double _convertIndexToNote(int index) {
-    /*
-     * Since we use the points of the bounding box, the tone height is always shifted with 1 in it's index
-     * A better option would be to locate the center of the blob instead of the bounding box points.
-     * This could be done with a SimpleBlobDetector and a ROI based on the orientation of the note which we already know.
-     */
+/*
+ * Private function to retrieve the note frequency by index of the rectangles in convertDataToNote()
+ * Since we use the points of the bounding box, the tone height is always shifted with 1 in it's index
+ * A better option would be to locate the center of the blob instead of the bounding box points.
+ * This could be done with a SimpleBlobDetector and a ROI based on the orientation of the note which we already know.
+ *
+ * @param int index
+ * @return double frequency
+ * @author Dylan Van Assche
+ */
+double _convertIndexToNoteFrequency(int index) {
+    // index == 0 -> area before is ignored in this POC, every note there must stay on index 0.
     if(index > 0) {
         index++;
     }
