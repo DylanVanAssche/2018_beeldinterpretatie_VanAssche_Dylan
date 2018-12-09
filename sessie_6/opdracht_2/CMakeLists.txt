@@ -8,5 +8,5 @@ find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 # Output executable
-add_executable(sessie_6-2 main.cpp)
+add_executable(sessie_6-2 main.cpp faces.h)
 target_link_libraries(sessie_6-2 ${OpenCV_LIBS})

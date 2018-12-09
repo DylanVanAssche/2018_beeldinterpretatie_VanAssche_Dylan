@@ -9,3 +9,13 @@ In dit labo gaan we 2 verschillende soorten object detectors gebruiken om eerst 
 * **Opdracht 3**: Maak nu een ander project waarin we dezelfde interface hebben, maar met de people.mp4 video. Hierin moet je personen vinden gebruikmakende van de HOG+SVM pedestrian detector.
 
 * **EXTRA**: Kan je ook per persoon zijn/haar traject in de video bijhouden?
+
+# Usage
+
+Enter one of the directories and run: `cmake CMakeLists.txt && make`
+Afterwards, use one of the following commands (matching with the folder):
+
+- `./sessie6-1 --video=faces.mp4 --haar=haarcascade_frontalface_alt.xml` in `opdracht_1`.
+- `./sessie6-2 --video=faces.mp4 --lbp=lbpcascade_frontalface_improved.xml` in `opdracht_2`
+- `./sessie6-3 --video=people.mp4` in `opdracht_3`
+- `./sesise6-extra --video=people.mp4` in `opdracht_extra`

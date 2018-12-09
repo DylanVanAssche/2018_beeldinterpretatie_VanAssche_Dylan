@@ -1,14 +1,12 @@
-#include <iostream>
-#include <opencv2/opencv.hpp>
+#include "faces.h"
 
-using namespace std;
-using namespace cv;
-
-void runDetection(Mat frame, CascadeClassifier violaJones);
-#define SCALE_FACTOR 1.05
-#define MIN_NEIGHBORS 3
-#define FONT_SIZE 0.8
-
+/*
+ * LBP is 4x faster than HAAR since LBP only use integers (black/white) while HAAR uses floating points (gray values).
+ * The accuracy is lower due this approach in exchange for a huge speed up, which is handy on low power devices.
+ * Both are frontal face detectors (with these XMLs), faces that are rotated or in perspective aren't detected!
+ * Rotation can be solved by scanning the image several times while turning the image or classifier with a certain angle.
+ * Perspective can be solved by combining multiple classifiers into one.
+ */
 int main(int argc, const char** argv) {
     CommandLineParser parser(argc, argv,
                              "{ help h usage ? | | Shows this message.}"

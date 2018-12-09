@@ -1,17 +1,4 @@
-#include <iostream>
-#include <opencv2/opencv.hpp>
-
-using namespace std;
-using namespace cv;
-
-#define FONT_SIZE 0.8
-#define MIN_WEIGHT 1.0
-#define SCALE 1.5
-#define RADIUS 5
-#define THICKNESS -1 // fill complete
-
-vector<Point> runDetection(Mat frame, HOGDescriptor hog);
-Mat drawTracking(Mat input, vector<Point> tracking);
+#include "people.h"
 
 int main(int argc, const char** argv) {
     CommandLineParser parser(argc, argv,
@@ -40,7 +27,7 @@ int main(int argc, const char** argv) {
     VideoCapture cap(video);
     if(!cap.isOpened())
     {
-        cerr << "Please supply your videos using command line arguments: --video=faces.mp4" << endl;
+        cerr << "Please supply your videos using command line arguments: --video=people.mp4" << endl;
         return -1;
     }
 
@@ -125,7 +112,3 @@ Mat drawTracking(Mat input, vector<Point> tracking) {
 
     return img;
 }
-
-// LBP is 4x sneller omdat deze enkel met integers werkt ipv floats. Haar werkt met grijswaarden, LBP enkel Z/W. Helaas is de accuratie hierdoor slechter
-// https://courses.nvidia.com/courses account maken en dan NIKS doen
-//websocketstext.com -> YES port 80 op alles

@@ -1,13 +1,4 @@
-#include <iostream>
-#include <opencv2/opencv.hpp>
-
-using namespace std;
-using namespace cv;
-
-void runDetection(Mat frame, CascadeClassifier violaJones);
-#define SCALE_FACTOR 1.05
-#define MIN_NEIGHBORS 3
-#define FONT_SIZE 0.8
+#include "faces.h"
 
 int main(int argc, const char** argv) {
     CommandLineParser parser(argc, argv,
