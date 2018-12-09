@@ -106,4 +106,4 @@ script:
         - cd opdracht_extra
         - cmake CMakeLists.txt
         - make
-        cd ../..
+        - cd ../..
