@@ -508,31 +508,48 @@ vector<Note> convertDataToNote(ContoursData data, vector<StaffLineData> staffLin
     Scalar color2 = Scalar(0, 0, 255);
     int distanceBetween = abs(staffLineDistances.at(0).position - staffLineDistances.at(1).position);
 
-    Rect areaBefore = Rect(Point(0, 0), Point(cols, staffLineDistances.at(0).position - distanceBetween/4));
-    areas.push_back(areaBefore);
+    // Before the first staff line
+    Rect areaBefore = Rect(
+            Point(0, 0),
+            Point(cols, staffLineDistances.at(0).position - distanceBetween/4)
+            );
     rectangle(drawing, areaBefore, color2);
+    areas.push_back(areaBefore);
 
     for(int j=0; j < staffLineDistances.size(); ++j) {
         int yPosition = staffLineDistances.at(j).position;
+
         // Only area between when we are really between 2 staff lines
         if(j > 0) {
             distanceBetween = abs(staffLineDistances.at(j).position - staffLineDistances.at(j - 1).position);
-            Rect areaBetween = Rect(Point(0, yPosition - 3*distanceBetween/4), Point(cols, yPosition - distanceBetween/4));
-            areas.push_back(areaBetween);
+
+            // Between staff lines
+            Rect areaBetween = Rect(
+                    Point(0, yPosition - 3*distanceBetween/4),
+                    Point(cols, yPosition - distanceBetween/4)
+                    );
             rectangle(drawing, areaBetween, color2);
+            areas.push_back(areaBetween);
         }
-        Rect areaOn = Rect(Point(0, yPosition - distanceBetween/4), Point(cols, yPosition + distanceBetween/4)); // on the staff line
-        areas.push_back(areaOn);
+
+        // On a staff line
+        Rect areaOn = Rect(
+                Point(0, yPosition - distanceBetween/4),
+                Point(cols, yPosition + distanceBetween/4)
+                );
         rectangle(drawing, areaOn, color1);
+        areas.push_back(areaOn);
     }
 
-    Rect areaAfter = Rect(Point(0, staffLineDistances.at(staffLineDistances.size() - 1).position + distanceBetween/4),
-            Point(cols, rows));
+    // After the last staff line
+    Rect areaAfter = Rect(
+            Point(0, staffLineDistances.at(staffLineDistances.size() - 1).position + distanceBetween/4),
+            Point(cols, rows)
+            );
     areas.push_back(areaAfter);
     rectangle(drawing, areaAfter, color2);
 
-
-    // Find for every note, it's frequency
+    // Find for every note, it's frequency by checking it's location
     for(int i=0; i < data.orientation.size(); ++i) {
         Note note;
         noteLocation = data.orientation.at(i);
@@ -542,7 +559,7 @@ vector<Note> convertDataToNote(ContoursData data, vector<StaffLineData> staffLin
         for(int a=0; a < areas.size(); ++a) {
             if(areas.at(a).contains(noteLocation)) {
                 frequency = _convertIndexToNote(a);
-                cout << "Note frequency: " << note.frequency << endl;
+                cout << "Note frequency: " << frequency << endl;
                 break;
             }
         }
@@ -552,16 +569,24 @@ vector<Note> convertDataToNote(ContoursData data, vector<StaffLineData> staffLin
         note.length = NUM_SAMPLES; //length; // TODO
 
         notes.push_back(note);
+        circle(drawing, noteLocation, 10, Scalar(255, 0, 0), 5);
         imshow("Area test", drawing);
-        //waitKey(0);
+        waitKey(0);
     }
-
-
 
     return notes;
 }
 
 double _convertIndexToNote(int index) {
+    /*
+     * Since we use the points of the bounding box, the tone height is always shifted with 1 in it's index
+     * A better option would be to locate the center of the blob instead of the bounding box points.
+     * This could be done with a SimpleBlobDetector and a ROI based on the orientation of the note which we already know.
+     */
+    if(index > 0) {
+        index++;
+    }
+
     switch(index) {
         case 0:
             return NOTE_G;
@@ -584,6 +609,7 @@ double _convertIndexToNote(int index) {
         case 9:
             return NOTE_E;
         case 10:
+        case 11:
             return NOTE_D;
         default:
             cerr << "Can't estimate note, frequency is set to 0.0" << endl;
