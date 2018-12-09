@@ -7,6 +7,7 @@
  */
 #include "notes.h"
 
+Mat helpImg;
 int main(int argc, const char** argv) {
     CommandLineParser parser(argc, argv,
                              "{ help h usage ?                | | Shows this message.                                     }"
@@ -68,17 +69,6 @@ int main(int argc, const char** argv) {
     imshow("Splitting stafflines", noteSheet.staffLines);
     waitKey(0);
 
-    // Test sound OK
-    vector<vector<short> > waves;
-    waves.push_back(generateWaveform(NOTE_C, NUM_SAMPLES));
-    waves.push_back(generateWaveform(NOTE_D, NUM_SAMPLES));
-    waves.push_back(generateWaveform(NOTE_E, NUM_SAMPLES));
-    waves.push_back(generateWaveform(NOTE_F, NUM_SAMPLES));
-    waves.push_back(generateWaveform(NOTE_G, NUM_SAMPLES));
-    waves.push_back(generateWaveform(NOTE_A, NUM_SAMPLES));
-    waves.push_back(generateWaveform(NOTE_B, NUM_SAMPLES));
-    saveWaveforms(outputSoundPath, waves);
-
     // Get horizontal histogram of the sheet and notes
     Mat histSheet = getHorizontalHistogram(noteSheet.notes);
     Mat histNote = getHorizontalHistogram(halfNoteImg);
@@ -96,11 +86,21 @@ int main(int argc, const char** argv) {
     //cout << matchValue << endl;
 
     // Find the distances between the staff lines
-    vector<int> distances = getStaffLineDistances(noteSheet.staffLines);
+    vector<StaffLineData> distances = getStaffLineDistances(noteSheet.staffLines);
 
     for(int d=0; d < distances.size(); ++d) {
-        cout << "staff line position:" << distances.at(d) << endl;
+        cout << "staff line position:" << distances.at(d).position << endl;
     }
+
+    helpImg = noteSheet.staffLines.clone();
+    vector<Note> notes = convertDataToNote(contoursSheet, distances, sheetImg.rows, sheetImg.cols);
+
+    // Generate wave
+    vector<vector<short> > waves;
+    for(int n=0; n < notes.size(); ++n) {
+        waves.push_back(generateWaveform(notes.at(n).frequency, notes.at(n).length/10));
+    }
+    saveWaveforms(outputSoundPath, waves);
 
 
    /* int step = histNote.cols/2;
@@ -401,9 +401,10 @@ void drawContoursWithOrientation(ContoursData data, int rows, int cols) {
  * @returns vector<int> distances
  * @author Dylan Van Assche
  */
-vector<int> getStaffLineDistances(Mat input) {
+vector<StaffLineData> getStaffLineDistances(Mat input) {
     Mat img = input.clone();
-    vector<int> distances;
+    vector<StaffLineData> distances;
+    vector<StaffLineData> distancesFiltered;
 
     /*
      * Calculate horizontal histogram (number of pixels in each row), idea from Ann Philips'lab.
@@ -431,7 +432,10 @@ vector<int> getStaffLineDistances(Mat input) {
         else if (previousVal > currentVal) {
             // Starts descending? Local maximum retrieved!
             if (direction != DESCENDING) {
-                distances.push_back(i-1);
+                StaffLineData data;
+                data.position = i - 1;
+                data.value = verticalHistogram.at<int>(i - 1, 0);
+                distances.push_back(data);
                 direction = DESCENDING;
             }
         }
@@ -439,7 +443,152 @@ vector<int> getStaffLineDistances(Mat input) {
         previousVal = currentVal;
     }
 
-    return distances;
+    // Only the 5 biggest results are staff lines, sort them from BIG to SMALL
+    sort(distances.begin(), distances.end(), sortStaffLinesBiggestValueFirst);
+    for(int s=0; s < NUMBER_OF_STAFF_LINES; ++s) {
+        distancesFiltered.push_back(distances.at(s));
+    }
+
+    // Sort by position for later usage
+    sort(distancesFiltered.begin(), distancesFiltered.end(), sortStaffLinesSmallestPositionFirst);
+
+    return distancesFiltered;
+}
+
+/*
+ * Combines the contours information and the distances between staff lines to find the frequency of each note.
+ * @param ContoursData data
+ * @param vector<int> staffLineDistances
+ * @returns vector<Note>
+ */
+vector<Note> convertDataToNote(ContoursData data, vector<StaffLineData> staffLineDistances, int rows, int cols) {
+    Mat drawing = Mat::zeros(rows, cols, CV_8UC3);
+    helpImg.copyTo(drawing);
+    cvtColor(drawing, drawing, CV_GRAY2BGR);
+    double frequency = 0.0;
+    double length = 0.0;
+    Point noteLocation;
+    vector<Rect> areas;
+    vector<Note> notes;
+    RNG rng(RNG_INIT);
+
+    /*
+     * Create areas for the staff lines
+     * https://www.muzieklerenlezen.nl/les-7-muzieknoten-een-naam-geven
+     * The height (measured from below) = frequency from the note (inverted, in comparison to OpenCV XY coordinates!)
+     *
+     * |
+     * |                                                            C
+     * |                                                        B
+     * |                                                    A
+     * |                                                G
+     * +--------------------------------------------F----------------------
+     * |                                        E
+     * +------------------------------------D------------------------------
+     * |                                C
+     * +----------------------------B--------------------------------------
+     * |                        A
+     * +--------------------G----------------------------------------------
+     * |                F
+     * +------------E------------------------------------------------------
+     * |        D
+     * |    C
+     * |
+     *
+     * /!\ To keep this proof-of-concept simple, we will focus on the notes within the reach of the staff lines.
+     *
+     */
+
+    if(staffLineDistances.size() < 2) {
+        cerr << "Number of staff lines is too low to find the frequency: " << staffLineDistances.size() << endl;
+        return notes;
+    }
+
+    Scalar color1 = Scalar(0, 255, 0);
+    Scalar color2 = Scalar(0, 0, 255);
+    int distanceBetween = abs(staffLineDistances.at(0).position - staffLineDistances.at(1).position);
+
+    Rect areaBefore = Rect(Point(0, 0), Point(cols, staffLineDistances.at(0).position - distanceBetween/4));
+    areas.push_back(areaBefore);
+    rectangle(drawing, areaBefore, color2);
+
+    for(int j=0; j < staffLineDistances.size(); ++j) {
+        int yPosition = staffLineDistances.at(j).position;
+        // Only area between when we are really between 2 staff lines
+        if(j > 0) {
+            distanceBetween = abs(staffLineDistances.at(j).position - staffLineDistances.at(j - 1).position);
+            Rect areaBetween = Rect(Point(0, yPosition - 3*distanceBetween/4), Point(cols, yPosition - distanceBetween/4));
+            areas.push_back(areaBetween);
+            rectangle(drawing, areaBetween, color2);
+        }
+        Rect areaOn = Rect(Point(0, yPosition - distanceBetween/4), Point(cols, yPosition + distanceBetween/4)); // on the staff line
+        areas.push_back(areaOn);
+        rectangle(drawing, areaOn, color1);
+    }
+
+    Rect areaAfter = Rect(Point(0, staffLineDistances.at(staffLineDistances.size() - 1).position + distanceBetween/4),
+            Point(cols, rows));
+    areas.push_back(areaAfter);
+    rectangle(drawing, areaAfter, color2);
+
+
+    // Find for every note, it's frequency
+    for(int i=0; i < data.orientation.size(); ++i) {
+        Note note;
+        noteLocation = data.orientation.at(i);
+        circle(drawing, noteLocation, 3, Scalar(255, 0, 0), -1);
+
+        // Check between/on which staff lines the note is sitting
+        for(int a=0; a < areas.size(); ++a) {
+            if(areas.at(a).contains(noteLocation)) {
+                frequency = _convertIndexToNote(a);
+                cout << "Note frequency: " << note.frequency << endl;
+                break;
+            }
+        }
+
+        // Find the length of each note
+        note.frequency = frequency;
+        note.length = NUM_SAMPLES; //length; // TODO
+
+        notes.push_back(note);
+        imshow("Area test", drawing);
+        //waitKey(0);
+    }
+
+
+
+    return notes;
+}
+
+double _convertIndexToNote(int index) {
+    switch(index) {
+        case 0:
+            return NOTE_G;
+        case 1:
+            return NOTE_F;
+        case 2:
+            return NOTE_E;
+        case 3:
+            return NOTE_D;
+        case 4:
+            return NOTE_C;
+        case 5:
+            return NOTE_B;
+        case 6:
+            return NOTE_A;
+        case 7:
+            return NOTE_G;
+        case 8:
+            return NOTE_F;
+        case 9:
+            return NOTE_E;
+        case 10:
+            return NOTE_D;
+        default:
+            cerr << "Can't estimate note, frequency is set to 0.0" << endl;
+            return 0.0;
+    }
 }
 
 /*

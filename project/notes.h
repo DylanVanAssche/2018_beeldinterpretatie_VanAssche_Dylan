@@ -22,6 +22,7 @@ extern "C" {
 #define HORIZONTAL_HEIGHT 1
 #define VERTICAL_WIDTH 1
 #define RNG_INIT 12345
+#define NUMBER_OF_STAFF_LINES 5
 
 // Sound
 #define NUM_SAMPLES (2 * WAVFILE_SAMPLES_PER_SECOND)
@@ -37,16 +38,26 @@ extern "C" {
 using namespace std;
 using namespace cv;
 
-struct NoteSheet {
+typedef struct NoteSheet {
     Mat notes;
     Mat staffLines;
-};
+} NoteSheet;
 
-struct ContoursData {
+typedef struct ContoursData {
     vector< vector<Point> > contours;
     vector<Vec4i> hierarchy;
     vector<Point> orientation;
-};
+} ContoursData;
+
+typedef struct StaffLineData {
+    int position;
+    int value;
+} StaffLineData;
+
+typedef struct Note {
+    double frequency;
+    double length;
+} Note;
 
 enum {
     ASCENDING,
@@ -58,8 +69,20 @@ Mat getHorizontalHistogram(Mat input);
 void drawHistogram(Mat histogram, int rows, int cols);
 ContoursData getContours(Mat input);
 void drawContoursWithOrientation(ContoursData data, int rows, int cols);
-vector<int> getStaffLineDistances(Mat input);
+vector<StaffLineData> getStaffLineDistances(Mat input);
+vector<Note> convertDataToNote(ContoursData data, vector<StaffLineData> staffLineDistances, int rows, int cols);
+double _convertIndexToNote(int index);
 vector<short> generateWaveform(double frequency, double length);
 void saveWaveforms(string outputPath, vector< vector<short> > waveforms);
+
+// std::sort helper function
+bool sortStaffLinesBiggestValueFirst(const StaffLineData &a, const StaffLineData &b) {
+    return a.value > b.value; // biggest first
+}
+
+// std::sort helper function
+bool sortStaffLinesSmallestPositionFirst(const StaffLineData &a, const StaffLineData &b) {
+    return a.position < b.position; // biggest first
+}
 
 #endif //NOTES_H
