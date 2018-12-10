@@ -8,5 +8,5 @@ find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 # Output executable
-add_executable(project main.cpp notes.h lib/wavfile.h lib/wavfile.c)
+add_executable(project main.cpp notes.h lib/wavfile.h lib/wavfile.c sound.cpp stafflines.cpp contoursdata.cpp combine.cpp)
 target_link_libraries(project ${OpenCV_LIBS})

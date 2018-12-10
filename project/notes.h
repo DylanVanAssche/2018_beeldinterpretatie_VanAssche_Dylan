@@ -15,7 +15,7 @@ extern "C" {
 #define THRESHOLD_MAX 255
 #define THRESHOLD_BLOCK_SIZE 25
 #define THRESHOLD_C -2
-#define TEMPLATE_MATCH_PERCENTAGE 95.0
+#define TEMPLATE_MATCH_PERCENTAGE 99.0
 #define ERODE_DILATE_ITER 5
 #define HORIZONTAL_DIVIDER 30
 #define VERTICAL_DIVIDER 30
@@ -25,8 +25,9 @@ extern "C" {
 #define NUMBER_OF_STAFF_LINES 5
 
 // Sound
-#define NUM_SAMPLES (2 * WAVFILE_SAMPLES_PER_SECOND)
-#define NOTE_LENGTH NUM_SAMPLES/16 // Shortest note is 1/16
+#define NOTE_LENGTH (2 * WAVFILE_SAMPLES_PER_SECOND)
+#define NOTE_LENGTH_16 NOTE_LENGTH/16 // 1/16 note
+#define NOTE_LENGTH_4 NOTE_LENGTH/4 // 1/4 note
 #define VOLUME 32000
 #define NOTE_C 261.6
 #define NOTE_D 293.7
@@ -44,11 +45,17 @@ typedef struct NoteSheet {
     Mat staffLines;
 } NoteSheet;
 
+typedef struct NoteTemplate {
+    Mat templ;
+    double length;
+} NoteTemplate;
+
 typedef struct ContoursData {
     vector< vector<Point> > contours;
     vector<Vec4i> hierarchy;
     vector<Point> orientation;
     vector<double> length;
+    Mat image;
 } ContoursData;
 
 typedef struct StaffLineData {
@@ -59,33 +66,16 @@ typedef struct StaffLineData {
 typedef struct Note {
     double frequency;
     double length;
+    double position;
 } Note;
 
-enum {
-    ASCENDING,
-    DESCENDING
-} direction = ASCENDING;
-
 NoteSheet splitStaffLinesAndNotes(Mat input);
-Mat getHorizontalHistogram(Mat input);
 void drawHistogram(Mat histogram, int rows, int cols);
-ContoursData getContours(Mat input);
+ContoursData getContoursData(Mat input, NoteTemplate templ);
 void drawContoursWithOrientation(ContoursData data, int rows, int cols);
 vector<StaffLineData> getStaffLineDistances(Mat input);
-double getLengthByTemplateMatching(Mat inputInverted, vector<Mat> templates);
-vector<Note> convertDataToNote(Mat input, vector<Mat> templates, ContoursData data, vector<StaffLineData> staffLineDistances, int rows, int cols);
-double _convertIndexToNoteFrequency(int index);
+vector<Note> convertDataToNote(Mat input, vector<ContoursData> data, vector<StaffLineData> staffLineDistances, int rows, int cols);
 vector<short> generateWaveform(double frequency, double length);
 void saveWaveforms(string outputPath, vector< vector<short> > waveforms);
-
-// std::sort helper function
-bool sortStaffLinesBiggestValueFirst(const StaffLineData &a, const StaffLineData &b) {
-    return a.value > b.value; // biggest first
-}
-
-// std::sort helper function
-bool sortStaffLinesSmallestPositionFirst(const StaffLineData &a, const StaffLineData &b) {
-    return a.position < b.position; // biggest first
-}
 
 #endif //NOTES_H
