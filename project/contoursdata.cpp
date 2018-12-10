@@ -39,7 +39,8 @@ ContoursData getContoursData(Mat input, NoteTemplate templ) {
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
     vector<Point> orientation;
-    vector<double> length ;
+    vector<double> length;
+    vector<Rect> boxes;
 
     // Perform template matching on the image (for each template)
     matchTemplate(img, templ.templ, matchResult, CV_TM_SQDIFF);
@@ -66,9 +67,7 @@ ContoursData getContoursData(Mat input, NoteTemplate templ) {
     for(int i=0; i < contours.size(); ++i)
     {
         // Get the bounding box of the current contour
-        vector<Point> hull;
-        convexHull(contours.at(i), hull);
-        Rect rect = boundingRect(hull);
+        Rect rect = boundingRect(contours.at(i));
 
         // Find local result for this rectangle
         Point loc;
@@ -81,7 +80,7 @@ ContoursData getContoursData(Mat input, NoteTemplate templ) {
 
         // Find the centroid of the image by using OpenCV Moments in the ROI (=bouding box)
         Mat ROI = img(box);
-        Moments m = moments(ROI,true);
+        Moments m = moments(ROI, true); // Mat, binaryImage=true
         Point centroid(m.m10/m.m00 + box.x, m.m01/m.m00 + box.y);
 
         // Split bounding box in 2 parts to see where the blob of the note can be found.
@@ -101,15 +100,13 @@ ContoursData getContoursData(Mat input, NoteTemplate templ) {
             continue;
         }
 
-        // Keep length associated with the note
+        // Keep length and box associated with the note
         length.push_back(templ.length);
+        boxes.push_back(box);
 
         // Remove note from image for further processing (avoid double results with other templates)
         rectangle(img, box, Scalar::all(0), -1); // -1 for complete fill
     }
-
-    imshow("Rectangle img", img);
-    waitKey(0);
 
     // Combine the extracted data into a ContoursData struct
     ContoursData data;
@@ -118,36 +115,43 @@ ContoursData getContoursData(Mat input, NoteTemplate templ) {
     data.orientation = orientation;
     data.image = img;
     data.length = length;
+    data.templ = templ;
+    data.box = boxes;
     return data;
 }
 
 /*
- * Draws the contours using a random color generators and displays it.
+ * Draws the contours on the complete image and displays it.
  *
+ * @param Mat input
  * @param ContoursData data
  * @param int rows
  * @param int cols
  * @author Dylan Van Assche
  */
-void drawContoursWithOrientation(ContoursData data, int rows, int cols) {
-    RNG rng(RNG_INIT);
-    Mat drawing = Mat::zeros(rows, cols, CV_8UC3);
-
+void drawContoursWithOrientation(Mat input, ContoursData data, int rows, int cols) {
+    Mat drawing = input.clone();
+    Mat matchResult;
+    Scalar color = Scalar::all(255); // white
     double toneHeight = 0;
     Point orientationPoint = Point(0, 0);
     Point bottomPoint = Point(0, 0);
-    for(int i = 0; i < data.contours.size(); ++i) {
-        Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
-        drawContours(drawing, data.contours, (int)i, color, 2, 8, data.hierarchy, 0, Point());
 
+    cout << "Tone height: [";
+    for(int i = 0; i < data.contours.size(); ++i) {
+        drawContours(drawing, data.contours, (int)i, color, 2, 8, data.hierarchy, 0, Point());
         orientationPoint = data.orientation.at(i);
         bottomPoint = Point(orientationPoint.x, drawing.rows);
         circle(drawing, orientationPoint, 5, Scalar( 0, 0, 255));
         line(drawing, orientationPoint, bottomPoint, Scalar(255, 255, 255));
-        toneHeight = norm(orientationPoint - bottomPoint);
-        cout << toneHeight << endl;
-    }
+        rectangle(drawing, data.box.at(i), color);
 
+        toneHeight = norm(orientationPoint - bottomPoint);
+        cout << toneHeight << "px, ";
+    }
+    cout << "]" << endl;
+
+    cout << "Displaying contouring of the notes" << endl;
     namedWindow("Contours notes", WINDOW_AUTOSIZE);
     imshow("Contours notes", drawing);
     waitKey(0);

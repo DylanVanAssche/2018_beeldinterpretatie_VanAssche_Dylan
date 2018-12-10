@@ -68,5 +68,7 @@ void saveWaveforms(string outputPath, vector< vector<short> > waveforms) {
 
     // Close the WAV file
     wavfile_close(f);
+
+    cout << "Saved WAV file as '" << outputPath << "'" << endl;
 }
 

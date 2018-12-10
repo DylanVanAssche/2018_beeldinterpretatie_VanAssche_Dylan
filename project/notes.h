@@ -54,8 +54,10 @@ typedef struct ContoursData {
     vector< vector<Point> > contours;
     vector<Vec4i> hierarchy;
     vector<Point> orientation;
+    vector<Rect> box;
     vector<double> length;
     Mat image;
+    NoteTemplate templ;
 } ContoursData;
 
 typedef struct StaffLineData {
@@ -72,7 +74,7 @@ typedef struct Note {
 NoteSheet splitStaffLinesAndNotes(Mat input);
 void drawHistogram(Mat histogram, int rows, int cols);
 ContoursData getContoursData(Mat input, NoteTemplate templ);
-void drawContoursWithOrientation(ContoursData data, int rows, int cols);
+void drawContoursWithOrientation(Mat input, ContoursData data, int rows, int cols);
 vector<StaffLineData> getStaffLineDistances(Mat input);
 vector<Note> convertDataToNote(Mat input, vector<ContoursData> data, vector<StaffLineData> staffLineDistances, int rows, int cols);
 vector<short> generateWaveform(double frequency, double length);

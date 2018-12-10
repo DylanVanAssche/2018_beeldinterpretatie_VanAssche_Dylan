@@ -170,6 +170,7 @@ vector<Note> convertDataToNote(Mat input, vector<ContoursData> data, vector<Staf
     rectangle(drawing, areaAfter, color2);
 
     // Find for every note the frequency by checking it's location
+    cout << "Note frequency: [";
     for(int d=0; d < data.size(); ++d) {
         for (int i = 0; i < data.at(d).orientation.size(); ++i) {
             Note note;
@@ -180,7 +181,7 @@ vector<Note> convertDataToNote(Mat input, vector<ContoursData> data, vector<Staf
             for (int a = 0; a < areas.size(); ++a) {
                 if (areas.at(a).contains(noteLocation)) {
                     frequency = _convertIndexToNoteFrequency(a);
-                    cout << "Note frequency: " << frequency << endl;
+                    cout << frequency << "Hz, ";
                     break;
                 }
             }
@@ -195,6 +196,7 @@ vector<Note> convertDataToNote(Mat input, vector<ContoursData> data, vector<Staf
             notes.push_back(note);
         }
     }
+    cout << "]" << endl;
 
     /*
      * Because of template matching, the order of the notes is dropped. We can retrieve it by sorting the notes based
@@ -202,6 +204,7 @@ vector<Note> convertDataToNote(Mat input, vector<ContoursData> data, vector<Staf
      */
     sort(notes.begin(), notes.end(), sortNotesBySmallestPositionFirst);
 
+    cout << "Displaying matches notes and staff lines" << endl;
     imshow("Matching notes with staff lines", drawing);
     waitKey(0);
 

@@ -61,13 +61,12 @@ void drawHistogram(Mat histogram, int rows, int cols) {
 
     for(int i=0; i < counter; i++) {
         normalize = drawing.rows * ((histogram.at<int>(0, i))/maxHistogram);
-        cerr << normalize << ",";
         // Mind the order of X/Y and ROW/COLUMN: https://stackoverflow.com/questions/25642532/opencv-pointx-y-represent-column-row-or-row-column
         line(drawing, Point(i, normalize), Point(i, 0), Scalar(255,255,255));
     }
-    cerr << endl;
 
     // Display histogram and wait for key
+    cout << "Displaying histogram" << endl;
     namedWindow("Histogram", CV_WINDOW_AUTOSIZE);
     imshow("Histogram", drawing);
     waitKey(0);

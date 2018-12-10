@@ -89,8 +89,9 @@ int main(int argc, const char** argv) {
 
     // Split stafflines from input image
     NoteSheet noteSheet = splitStaffLinesAndNotes(sheetImg);
+    cout << "Displaying split between notes and staff lines" << endl;
     imshow("Splitting notes", noteSheet.notes);
-    imshow("Splitting stafflines", noteSheet.staffLines);
+    imshow("Splitting staff lines", noteSheet.staffLines);
     waitKey(0);
 
     /*
@@ -106,18 +107,20 @@ int main(int argc, const char** argv) {
 
     // Find double eight notes
     ContoursData contoursDoubleEight = getContoursData(noteSheet.notes, doubleEighthTempl);
-    drawContoursWithOrientation(contoursDoubleEight, sheetImg.rows, sheetImg.cols);
+    drawContoursWithOrientation(noteSheet.notes, contoursDoubleEight, sheetImg.rows, sheetImg.cols);
 
     // Find quarter notes (double eight notes are removed in the previous step)
     ContoursData contoursQuarter = getContoursData(contoursDoubleEight.image, quarterTempl);
-    drawContoursWithOrientation(contoursQuarter, sheetImg.rows, sheetImg.cols);
+    drawContoursWithOrientation(noteSheet.notes, contoursQuarter, sheetImg.rows, sheetImg.cols);
 
     // Find the distances between the staff lines
     vector<StaffLineData> distances = getStaffLineDistances(noteSheet.staffLines);
 
+    cout << "Staff line position: [";
     for(int d=0; d < distances.size(); ++d) {
-        cout << "staff line position:" << distances.at(d).position << endl;
+        cout << distances.at(d).position << "px, ";
     }
+    cout << "]" << endl;
 
     vector<ContoursData> data;
     data.push_back(contoursDoubleEight);
