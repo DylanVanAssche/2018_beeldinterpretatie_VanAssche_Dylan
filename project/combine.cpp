@@ -84,6 +84,8 @@ vector<Note> convertDataToNote(Mat input, vector<ContoursData> data, vector<Staf
     Mat drawing = Mat::zeros(rows, cols, CV_8UC3);
     input.copyTo(drawing);
     Mat img = input.clone();
+
+    // input image, output image, color space conversion code
     cvtColor(drawing, drawing, CV_GRAY2BGR);
     double frequency = NOTE_A; // fallback in case detection fails
     double length = NOTE_LENGTH; // fallback in case detection fails
@@ -124,18 +126,26 @@ vector<Note> convertDataToNote(Mat input, vector<ContoursData> data, vector<Staf
         return notes;
     }
 
-    Scalar color1 = Scalar(0, 255, 0);
-    Scalar color2 = Scalar(0, 0, 255);
+    // BGR
+    Scalar colorGreen = Scalar(0, 255, 0);
+    Scalar colorRed = Scalar(0, 0, 255);
+    Scalar colorBlue = Scalar(255, 0, 0);
     int distanceBetween = abs(staffLineDistances.at(0).position - staffLineDistances.at(1).position);
 
-    // Before the first staff line
+    /*
+     * Before the first staff line
+     * Point1, Point2
+     */
     Rect areaBefore = Rect(
             Point(0, 0),
             Point(cols, staffLineDistances.at(0).position - distanceBetween/4)
     );
-    rectangle(drawing, areaBefore, color2);
+
+    // image to draw on, Rect object, color
+    rectangle(drawing, areaBefore, colorRed);
     areas.push_back(areaBefore);
 
+    // Generate target areas on and between the staff lines
     for(int j=0; j < staffLineDistances.size(); ++j) {
         int yPosition = staffLineDistances.at(j).position;
 
@@ -143,31 +153,46 @@ vector<Note> convertDataToNote(Mat input, vector<ContoursData> data, vector<Staf
         if(j > 0) {
             distanceBetween = abs(staffLineDistances.at(j).position - staffLineDistances.at(j - 1).position);
 
-            // Between staff lines
+            /*
+             * Between staff lines
+             * Point1, Point2
+             */
             Rect areaBetween = Rect(
                     Point(0, yPosition - 3*distanceBetween/4),
                     Point(cols, yPosition - distanceBetween/4)
             );
-            rectangle(drawing, areaBetween, color2);
+
+            // image to draw on, Rect object, color
+            rectangle(drawing, areaBetween, colorRed);
             areas.push_back(areaBetween);
         }
 
-        // On a staff line
+        /*
+         * On a staff line
+         * Point1, Point2
+         */
         Rect areaOn = Rect(
                 Point(0, yPosition - distanceBetween/4),
                 Point(cols, yPosition + distanceBetween/4)
         );
-        rectangle(drawing, areaOn, color1);
+
+        // image to draw on, Rect object, color
+        rectangle(drawing, areaOn, colorGreen);
         areas.push_back(areaOn);
     }
 
-    // After the last staff line
+    /*
+     * After the last staff line
+     * Point1, Point2
+     */
     Rect areaAfter = Rect(
             Point(0, staffLineDistances.at(staffLineDistances.size() - 1).position + distanceBetween/4),
             Point(cols, rows)
     );
+
+    // image to draw on, Rect object, color
+    rectangle(drawing, areaAfter, colorRed);
     areas.push_back(areaAfter);
-    rectangle(drawing, areaAfter, color2);
 
     // Find for every note the frequency by checking it's location
     cout << "Note frequency: [";
@@ -175,7 +200,9 @@ vector<Note> convertDataToNote(Mat input, vector<ContoursData> data, vector<Staf
         for (int i = 0; i < data.at(d).orientation.size(); ++i) {
             Note note;
             noteLocation = data.at(d).orientation.at(i);
-            circle(drawing, noteLocation, 3, Scalar(255, 0, 0), -1);
+
+            // Image to draw on, center Point, radius, color, thickness (-1 = fill)
+            circle(drawing, noteLocation, CIRCLE_RADIUS, colorBlue, CIRCLE_THICKNESS);
 
             // Check between/on which staff lines the note is sitting
             for (int a = 0; a < areas.size(); ++a) {

@@ -42,26 +42,43 @@ ContoursData getContoursData(Mat input, NoteTemplate templ) {
     vector<double> length;
     vector<Rect> boxes;
 
-    // Perform template matching on the image (for each template)
+    /*
+     * Perform template matching on the image (for each template)
+     * target image, template to match, result Mat, method (difference between template squared)
+     */
     matchTemplate(img, templ.templ, matchResult, CV_TM_SQDIFF);
 
-    // NCC convolution: borders don't have any information [0, 1]
+    /*
+     * NCC convolution: borders don't have any information [0, 1]
+     * Mat input, Mat output, min, max, norm type, type (-1 -> type of output = type of input), mask (no mask)
+     */
     normalize(matchResult, matchResult, 0, 1, NORM_MINMAX, -1, Mat());
 
     // Convert MIN to MAX since best match TM_SQDIFF is minimum
     matchResult = 1 - matchResult;
+
+    /*
+     * Find the location of the maximum and minimum in template matching result
+     * Mat templateMatchingResult, minValue store, maxValue store, min location (Point), max location (Point)
+     */
     minMaxLoc(matchResult, &minValue, &maxValue, &minLoc, &maxLoc, Mat());
 
-    // Create mask for multiple matching using a threshold match percentage
+    /*
+     * Create mask for multiple matching using a threshold match percentage
+     * Size(cols, rows), type of Mat
+     */
     Mat mask = Mat::zeros(Size(img.cols, img.rows), CV_32FC1);
+    // Mat to threshold, threshold value, maximum possible value, mask
     inRange(matchResult, maxValue * ((double) TEMPLATE_MATCH_PERCENTAGE / 100.0), maxValue, mask);
     mask.convertTo(mask, CV_8UC1);
 
-    // Find contours
-    findContours(mask, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0));
-
-    // Use contours to find the contours of all the matches
+    /*
+     * Find contours
+     * Use contours to find the contours of all the matches
+     * Input Mat, contours output, mode, method (offset = Point() -> no offset)
+     */
     findContours(mask, contours, CV_RETR_EXTERNAL, CHAIN_APPROX_NONE);
+    Scalar colorBlack = Scalar::all(0);
 
     // Process every contour: bounding box,
     for(int i=0; i < contours.size(); ++i)
@@ -80,7 +97,8 @@ ContoursData getContoursData(Mat input, NoteTemplate templ) {
 
         // Find the centroid of the image by using OpenCV Moments in the ROI (=bouding box)
         Mat ROI = img(box);
-        Moments m = moments(ROI, true); // Mat, binaryImage=true
+        // Mat, binaryImage=true
+        Moments m = moments(ROI, true);
         Point centroid(m.m10/m.m00 + box.x, m.m01/m.m00 + box.y);
 
         // Split bounding box in 2 parts to see where the blob of the note can be found.
@@ -104,8 +122,11 @@ ContoursData getContoursData(Mat input, NoteTemplate templ) {
         length.push_back(templ.length);
         boxes.push_back(box);
 
-        // Remove note from image for further processing (avoid double results with other templates)
-        rectangle(img, box, Scalar::all(0), -1); // -1 for complete fill
+        /*
+         * Remove note from image for further processing (avoid double results with other templates)
+         * image to draw on, Rect, color, thickness = -1 (complete fill)
+         */
+        rectangle(img, box, colorBlack, RECTANGLE_THICKNESS);
     }
 
     // Combine the extracted data into a ContoursData struct
@@ -132,19 +153,27 @@ ContoursData getContoursData(Mat input, NoteTemplate templ) {
 void drawContoursWithOrientation(Mat input, ContoursData data, int rows, int cols) {
     Mat drawing = input.clone();
     Mat matchResult;
-    Scalar color = Scalar::all(255); // white
     double toneHeight = 0;
     Point orientationPoint = Point(0, 0);
     Point bottomPoint = Point(0, 0);
+    // BGR
+    Scalar colorRed = Scalar(0, 0, 255);
+    Scalar colorWhite = Scalar::all(255);
 
     cout << "Tone height: [";
     for(int i = 0; i < data.contours.size(); ++i) {
-        drawContours(drawing, data.contours, (int)i, color, 2, 8, data.hierarchy, 0, Point());
+        /*
+         * Mat to draw on, contours, index of the contour to draw, color, thickness, lineType, hierarchy,
+         * max level (nesting is disabled by 0), offset
+         */
+        drawContours(drawing, data.contours, i, colorWhite, CONTOURS_THICKNESS, LINE_8, data.hierarchy, CONTOURS_MAX_LEVEL, Point());
         orientationPoint = data.orientation.at(i);
         bottomPoint = Point(orientationPoint.x, drawing.rows);
-        circle(drawing, orientationPoint, 5, Scalar( 0, 0, 255));
-        line(drawing, orientationPoint, bottomPoint, Scalar(255, 255, 255));
-        rectangle(drawing, data.box.at(i), color);
+
+        // Image to draw on, center, radius, color
+        circle(drawing, orientationPoint, CIRCLE_RADIUS, colorRed);
+        line(drawing, orientationPoint, bottomPoint, colorWhite);
+        rectangle(drawing, data.box.at(i), colorWhite);
 
         toneHeight = norm(orientationPoint - bottomPoint);
         cout << toneHeight << "px, ";
@@ -154,5 +183,7 @@ void drawContoursWithOrientation(Mat input, ContoursData data, int rows, int col
     cout << "Displaying contouring of the notes" << endl;
     namedWindow("Contours notes", WINDOW_AUTOSIZE);
     imshow("Contours notes", drawing);
+
+    // wait for keypress and trigger interrupt handling of the GUI
     waitKey(0);
 }

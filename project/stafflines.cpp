@@ -43,11 +43,14 @@ void drawHistogram(Mat histogram, int rows, int cols) {
     Mat drawing = Mat::zeros(rows, cols, CV_8UC1);
     double maxHistogram = 0;
     int normalize = 0;
+    Scalar colorWhite = Scalar::all(255);
 
     /*
      * Find global maximum to normalize the histogram later.
      * Global minimum is skipped using a NULL pointer as described in the docs.
      * https://docs.opencv.org/3.4.0/d2/de8/group__core__array.html#ga7622c466c628a75d9ed008b42250a73f
+     * Mat input, min, max
+     * min = NULL, the function will skip this since we don't need it anyway
      */
     minMaxIdx(histogram, NULL, &maxHistogram);
 
@@ -61,8 +64,9 @@ void drawHistogram(Mat histogram, int rows, int cols) {
 
     for(int i=0; i < counter; i++) {
         normalize = drawing.rows * ((histogram.at<int>(0, i))/maxHistogram);
-        // Mind the order of X/Y and ROW/COLUMN: https://stackoverflow.com/questions/25642532/opencv-pointx-y-represent-column-row-or-row-column
-        line(drawing, Point(i, normalize), Point(i, 0), Scalar(255,255,255));
+        // Mind the order of X/Y and ROW/COLUMN: https://stackoverflow.com/questions/25642532/opencv-pointx-y-represent-column-row-or-row-column !
+        // Mat to draw on, Point 1, Point 2, color
+        line(drawing, Point(i, normalize), Point(i, 0), colorWhite);
     }
 
     // Display histogram and wait for key
@@ -92,7 +96,12 @@ NoteSheet splitStaffLinesAndNotes(Mat input) {
     Mat binary = input.clone(); // Make sure we don't modify the input
     NoteSheet result;
 
-    // Remove noise using an opening operation
+    /*
+     * Remove noise using an opening operation
+     * input, output, kernel, anchor point, iterations
+     * kernel = structuring element form
+     * anchor = anchor of the structuring element, Point(-1, -1) = center
+     */
     erode(binary, binary, 0, Point(-1, -1), ERODE_DILATE_ITER);
     dilate(binary, binary, 0, Point(-1, -1), ERODE_DILATE_ITER);
 
@@ -107,6 +116,8 @@ NoteSheet splitStaffLinesAndNotes(Mat input) {
      * THRESHOLD_C set to -2, constant subtracted from the mean or weighted mean.
      *
      * https://docs.opencv.org/3.2.0/d7/d1b/group__imgproc__misc.html#ga72b913f352e4a1b1b397736707afcde3
+     *
+     * Input, output, maximum threshold value, mode, threshold type, block size, constant for subtraction
      */
     binary = ~binary; // Invert image
     adaptiveThreshold(binary, binary, THRESHOLD_MAX, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, THRESHOLD_BLOCK_SIZE, THRESHOLD_C);
@@ -132,6 +143,7 @@ NoteSheet splitStaffLinesAndNotes(Mat input) {
     // Generate structure element
     int horizontalSize = horizontalLines.cols / HORIZONTAL_DIVIDER;
     int verticalSize = verticalLines.rows / VERTICAL_DIVIDER;
+    // type, Size of structure element
     Mat horizontalStructure = getStructuringElement(MORPH_RECT, Size(horizontalSize, HORIZONTAL_HEIGHT));
     Mat verticalStructure = getStructuringElement(MORPH_RECT, Size(VERTICAL_WIDTH, verticalSize));
 
@@ -172,12 +184,14 @@ vector<StaffLineData> getStaffLineDistances(Mat input) {
     vector<StaffLineData> distancesFiltered;
 
     /*
-     * Calculate horizontal histogram (number of pixels in each row), idea from Ann Philips'lab.
-     * This can be achieved using the reduce() function: https://docs.opencv.org/3.4.4/d2/de8/group__core__array.html#ga4b78072a303f29d9031d56e5638da78e
+     * Calculate horizontal histogram (number of pixels in each row), idea from Ann Philips'lab by reducing the matrix
+     * to a vector. This can be achieved using the reduce() function: https://docs.opencv.org/3.4.4/d2/de8/group__core__array.html#ga4b78072a303f29d9031d56e5638da78e
      * as described here: http://answers.opencv.org/question/17765/analysis-of-the-vertical-and-horizontal-histogram/
+     *
+     * Mat input, Mat output, dimension (0 = single row, 1 = single column)
      */
     Mat verticalHistogram;
-    reduce(img, verticalHistogram, 1, CV_REDUCE_SUM, CV_32S);
+    reduce(img, verticalHistogram, REDUCE_DIMENSION, CV_REDUCE_SUM, CV_32S);
     drawHistogram(verticalHistogram, input.rows, input.rows);
 
     /*
